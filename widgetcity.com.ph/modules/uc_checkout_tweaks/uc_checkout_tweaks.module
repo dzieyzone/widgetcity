@@ -1,0 +1,405 @@
+<?php
+// $Id: uc_checkout_tweaks.module,v 1.4 2010/10/25 06:52:07 longwave Exp $
+
+/**
+ * Implementation of hook_theme().
+ */
+function uc_checkout_tweaks_theme() {
+  return array(
+    'address_pane_amazon_style' => array(
+      'arguments' => array('form' => NULL),
+      'file' => 'uc_checkout_tweaks.theme.inc',
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_menu_alter().
+ */
+function uc_checkout_tweaks_menu_alter(&$items) {
+  $items['cart/checkout/line_items']['page callback'] = 'uc_checkout_tweaks_uc_payment_get_totals';
+  $items['cart/checkout/line_items']['file'] = 'uc_checkout_tweaks.pages.inc';
+  $items['cart/checkout/line_items']['module'] = 'uc_checkout_tweaks';
+}
+
+/**
+ * Implementation of hook_form_FORM_ID_alter() for uc_cart_checkout_settings_form().
+ */
+function uc_checkout_tweaks_form_uc_cart_checkout_settings_form_alter(&$form, &$form_state) {
+  $form['general']['uc_checkout_tweaks_amazon_style'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Use Amazon.com-style saved address selectors.'),
+    '#default_value' => variable_get('uc_checkout_tweaks_amazon_style', FALSE),
+  );
+
+  $form['general']['uc_checkout_tweaks_default_first_address'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Automatically select the first saved address by default.'),
+    '#default_value' => variable_get('uc_checkout_tweaks_default_first_address', FALSE),
+  );
+
+  $form['general']['uc_checkout_tweaks_default_same_address'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Assume billing and delivery addresses will be the same.'),
+    '#default_value' => variable_get('uc_checkout_tweaks_default_same_address', FALSE),
+  );
+
+  $form['pane_settings']['uc_checkout_tweaks_no_collapse'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Do not allow checkout panes to collapse at all.'),
+    '#default_value' => variable_get('uc_checkout_tweaks_no_collapse', FALSE),
+  );
+}
+
+/**
+ * Implementation of hook_form_FORM_ID_alter() for uc_cart_checkout_panes_form().
+ */
+function uc_checkout_tweaks_form_uc_cart_checkout_panes_form_alter(&$form, &$form_state) {
+  if (module_exists('uc_quote')) {
+    if (!isset($form['pane_quotes'])) {
+      $form['pane_quotes'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Calculate shipping cost settings'),
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+      );
+    }
+
+    $form['pane_quotes']['uc_checkout_tweaks_quote_table'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Show shipping costs in a table, sorted by price.'),
+      '#default_value' => variable_get('uc_checkout_tweaks_quote_table', FALSE),
+    );
+
+    $form['pane_quotes']['uc_checkout_tweaks_hide_shipping_review'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Hide the shipping quote section on the checkout review page.'),
+      '#description' => t('The shipping cost is shown in the order total summary, so selecting this option removes duplicate information from the review page.'),
+      '#default_value' => variable_get('uc_checkout_tweaks_hide_shipping_review', FALSE),
+    );
+  }
+
+  if (isset($form['pane_payment'])) {
+    if (variable_get('uc_pane_checkout_preview_enabled', TRUE)) {
+      unset($form['pane_payment']['uc_payment_show_order_total_preview']);
+    }
+
+    $form['pane_payment']['uc_checkout_tweaks_single_payment_method'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Hide the payment method radio buttons if only one method is available.'),
+      '#default_value' => variable_get('uc_checkout_tweaks_single_payment_method', FALSE),
+    );
+  }
+
+  $form['uc_checkout_tweaks'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Checkout text tweaks'),
+    '#description' => t('Enter replacement text for checkout panes here. Leave fields blank to use defaults.'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+
+  foreach (_checkout_pane_list() as $pane) {
+    $form['uc_checkout_tweaks']['uc_pane_'. $pane['id'] .'_title'] = array(
+      '#type' => 'textfield',
+      '#title' => t('!pane title', array('!pane' => $pane['title'])),
+      '#default_value' => variable_get('uc_pane_'. $pane['id'] .'_title', ''),
+    );
+
+    if ($pane['id'] == 'quotes') {
+      $form['uc_checkout_tweaks']['uc_pane_quotes_button_text'] = array(
+        '#type' => 'textfield',
+        '#title' => t('!pane button text', array('!pane' => $pane['title'])),
+        '#default_value' => variable_get('uc_pane_quotes_button_text', ''),
+      );
+    }
+  }
+
+  $form['buttons']['#weight'] = 10;
+}
+
+/**
+ * Implementation of hook_form_FORM_ID_alter() for uc_payment_methods_form().
+ */
+function uc_checkout_tweaks_form_uc_payment_methods_form_alter(&$form, &$form_state) {
+  $form['uc_checkout_tweaks'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Payment method tweaks'),
+    '#description' => t('Enter replacement text for payment method names here. Leave fields blank to use defaults.'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+
+  foreach (_payment_method_list() as $method) {
+    $form['uc_checkout_tweaks']['uc_payment_method_'. $method['id'] .'_title'] = array(
+      '#type' => 'textfield',
+      '#title' => $method['title'],
+      '#default_value' => variable_get('uc_payment_method_'. $method['id'] .'_title', ''),
+    );
+  }
+
+  $form['buttons']['#weight'] = 10;
+}
+
+/**
+ * Implementation of hook_form_FORM_ID_alter() for uc_cart_checkout_form().
+ */
+function uc_checkout_tweaks_form_uc_cart_checkout_form_alter(&$form, &$form_state) {
+  global $user;
+
+  // Collapse panes tweak.
+  if (variable_get('uc_checkout_tweaks_no_collapse', FALSE)) {
+    foreach (element_children($form['panes']) as $pane) {
+      if ($form['panes'][$pane]['#type'] == 'fieldset') {
+        $form['panes'][$pane]['#collapsible'] = FALSE;
+      }
+    }
+  }
+
+  // Address pane tweaks.
+  $same_address = variable_get('uc_checkout_tweaks_default_same_address', FALSE);
+
+  if ($same_address) {
+    drupal_add_js(drupal_get_path('module', 'uc_checkout_tweaks') .'/uc_checkout_tweaks.js');
+    drupal_add_js(array('uc_checkout_tweaks' => array(
+      'same_address' => $same_address,
+    )), 'setting');
+  }
+
+  foreach (array('billing', 'delivery') as $pane) {
+    if (isset($form['panes'][$pane]['copy_address']) ) {
+      // Only show on load, so non-JavaScript users don't see the checkbox.
+      $form['panes'][$pane]['copy_address']['#prefix'] = '<div class="show-onload">';
+      $form['panes'][$pane]['copy_address']['#suffix'] = '</div>';
+
+      if ($same_address) {
+        if (!isset($_SESSION['cart_order']) || isset($_SESSION['copy_address'])) {
+          $form['panes'][$pane]['copy_address']['#default_value'] = TRUE;
+        }
+        unset($form['panes'][$pane]['#description']);
+      }
+    }
+
+    $addresses = uc_get_addresses($user->uid, $pane);
+    if (!empty($addresses)) {
+      if (variable_get('uc_checkout_tweaks_amazon_style', FALSE)) {
+        $form['panes'][$pane]['#theme'] = 'address_pane_amazon_style';
+        $form['panes'][$pane]['#pane'] = $pane;
+        $form['panes'][$pane]['#saved_addresses'] = array();
+
+        foreach ($addresses as $id => $address) {
+          $form['panes'][$pane]['#saved_addresses'][$id] = uc_address_format($address['first_name'], $address['last_name'], $address['company'], $address['street1'], $address['street2'], $address['city'], $address['zone'], $address['postal_code'], $address['country']);
+        }
+
+        drupal_add_css(drupal_get_path('module', 'uc_checkout_tweaks') .'/uc_checkout_tweaks.css');
+        drupal_add_js(array('savedAddresses' => array(
+          $pane => array_slice(array_keys($form['panes'][$pane][$pane . '_address_select']['#options']), 1),
+        )), 'setting');
+        unset($form['panes'][$pane][$pane . '_address_select']);
+      }
+
+      if (!isset($_SESSION['cart_order']) && variable_get('uc_checkout_tweaks_default_first_address', FALSE)) {
+        $address = $addresses[0];
+
+        // Rewrite the zone selector entirely, as the country might be different.
+        if (uc_address_field_enabled('zone')) {
+          $form['panes'][$pane][$pane . '_zone'] = uc_zone_select(uc_get_field_name('zone'), $address['zone'], NULL, $address['country'], 'name', uc_address_field_required('zone'));
+        }
+
+        foreach ($address as $field => $value) {
+          if ($field != 'zone' && isset($form['panes'][$pane][$pane . '_'. $field])) {
+            $form['panes'][$pane][$pane . '_'. $field]['#default_value'] = $value;
+          }
+        }
+      }
+    }
+  }
+
+  // Shipping quote pane tweaks.
+  if (isset($form['panes']['quotes'])) {
+    if ($button = variable_get('uc_pane_quotes_button_text', '')) {
+      $form['panes']['quotes']['quote_button']['#value'] = $button;
+    }
+
+    if (variable_get('uc_checkout_tweaks_quote_table', FALSE)) {
+      drupal_add_js(drupal_get_path('module', 'uc_checkout_tweaks') .'/quote_table.js');
+    }
+  }
+
+  // Payment method pane tweaks.
+  if (isset($form['panes']['payment'])) {
+    $methods = array_keys($form['panes']['payment']['payment_method']['#options']);
+    foreach ($methods as $method) {
+      if ($title = variable_get('uc_payment_method_'. $method .'_title', '')) {
+        $form['panes']['payment']['payment_method']['#options'][$method] = $title;
+      }
+    }
+
+    if (variable_get('uc_checkout_tweaks_single_payment_method', FALSE) && count($methods) == 1) {
+      $method = $form['panes']['payment']['payment_method']['#default_value'];
+      $func = _payment_method_data($method, 'callback');
+      if (function_exists($func)) {
+        $form['panes']['payment']['payment_method'] = array(
+          '#type' => 'value',
+          '#value' => $method,
+        );
+
+        // Load the pane contents immediately instead of using the AJAX callback.
+        $order = uc_order_load($_SESSION['cart_order']);
+        $output = $func('cart-details', $order);
+        $form['panes']['payment']['details']['#value'] = '<div id="payment_details" class="solid-border" style="border:0; padding:0;">'. $output .'</div>';
+      }
+    }
+
+    if (variable_get('uc_pane_checkout_preview_enabled', TRUE)) {
+      unset($form['panes']['payment']['shown_total']);
+
+      if (!variable_get('uc_payment_show_order_total_preview', TRUE)) {
+        $form['panes']['payment']['current_total'] = array(
+          '#type' => 'hidden',
+          '#value' => NULL,
+        );
+
+        drupal_add_js(array('ucShowProgressBar' => TRUE), 'setting');
+      }
+    }
+  }
+
+  $form['#validate'][] = 'uc_checkout_tweaks_uc_cart_checkout_form_validate';
+}
+
+/**
+ * Log errors from the checkout form.
+ */
+function uc_checkout_tweaks_uc_cart_checkout_form_validate($form, &$form_state) {
+  if (isset($_SESSION['cart_order']) && $_SESSION['checkout_valid'] === FALSE && $messages = drupal_get_messages('error', FALSE)) {
+    $comment = t('Checkout validation errors:') . theme('item_list', $messages['error']);
+    uc_order_comment_save($_SESSION['cart_order'], 0, $comment, 'admin');
+  }
+
+  unset($_SESSION['copy_address']);
+  foreach (array('billing', 'delivery') as $pane) {
+    if (isset($form_state['values']['panes'][$pane]['copy_address']) && $form_state['values']['panes'][$pane]['copy_address']) {
+      $_SESSION['copy_address'] = TRUE;
+    }
+  }
+}
+
+/**
+ * Implementation of hook_checkout_pane().
+ */
+function uc_checkout_tweaks_checkout_pane() {
+  $panes[] = array(
+    'id' => 'checkout_preview',
+    'title' => $_GET['q'] == 'cart/checkout/review' ? t('Order total') : t('Order total preview'),
+    'callback' => 'uc_checkout_tweaks_pane_preview',
+    'weight' => 7,
+  );
+
+  return $panes;
+}
+
+/**
+ * Checkout preview pane callback.
+ */
+function uc_checkout_tweaks_pane_preview($op, &$arg1, $arg2) {
+  switch ($op) {
+    case 'view':
+      $contents['shown_total'] = array(
+        '#value' => '<div id="line-items-div"><em>'. t('Javascript must be enabled to view the order total preview.') .'</em></div>',
+      );
+
+      return array('description' => '', 'contents' => $contents);
+
+    case 'review':
+      $line_items = $arg1->line_items;
+      $items = _line_item_list();
+      foreach ($items as $item) {
+        if (isset($item['display_only']) && $item['display_only'] == TRUE) {
+          $result = $item['callback']('display', $arg1);
+          if (is_array($result)) {
+            foreach ($result as $line) {
+              $line_items[] = array(
+                'title' => $line['title'],
+                'amount' => $line['amount'],
+                'weight' => $item['weight']
+              );
+            }
+          }
+        }
+      }
+      usort($line_items, 'uc_weight_sort');
+
+      $context = array(
+        'revision' => 'themed',
+        'type' => 'line_item',
+        'subject' => array(
+          'order' => $arg1,
+        ),
+      );
+      $review = array();
+      foreach ($line_items as $line_item) {
+        $context['subject']['line_item'] = $line_item;
+        $review[] = array('title' => $line_item['title'], 'data' => uc_price($line_item['amount'], $context));
+      }
+      return $review;
+  }
+}
+
+/**
+ * Implementation of hook_checkout_pane_alter().
+ */
+function uc_checkout_tweaks_checkout_pane_alter(&$panes) {
+  if (arg(0) == 'cart') {
+    foreach ($panes as &$pane) {
+      if ($title = variable_get('uc_pane_'. $pane['id'] .'_title', '')) {
+        $pane['title'] = check_plain($title);
+      }
+
+      if ($pane['id'] == 'payment' && variable_get('uc_pane_checkout_preview_enabled', TRUE)) {
+        $pane['callback'] = 'uc_checkout_tweaks_pane_payment';
+      }
+      else if ($pane['id'] == 'quotes' && variable_get('uc_checkout_tweaks_hide_shipping_review', FALSE)) {
+        $pane['callback'] = 'uc_checkout_tweaks_pane_quotes';
+      }
+    }
+  }
+}
+
+/**
+ * Checkout payment pane callback, hiding the line items on the review page
+ * if the separate order total preview pane is enabled.
+ */
+function uc_checkout_tweaks_pane_payment($op, &$arg1, $arg2) {
+  if ($op == 'review') {
+    $review = array();
+    $review_data = _payment_method_data($arg1->payment_method, 'review');
+    if (empty($review_data)) {
+      $review_data = _payment_method_data($arg1->payment_method, 'name');
+    }
+    $review[] = array('title' => t('Paying by'), 'data' => $review_data);
+    $func = _payment_method_data($arg1->payment_method, 'callback');
+    if (function_exists($func)) {
+      $result = $func('cart-review', $arg1);
+      if (is_array($result)) {
+        $review = array_merge($review, $result);
+      }
+    }
+    return $review;
+  }
+  else {
+    return uc_checkout_pane_payment($op, $arg1, $arg2);
+  }
+}
+
+/**
+ * Checkout quotes pane callback, hiding the shipping quote on the review page.
+ */
+function uc_checkout_tweaks_pane_quotes($op, &$arg1, $arg2) {
+  if ($op == 'review') {
+    return;
+  }
+  else {
+    return uc_checkout_pane_quotes($op, $arg1, $arg2);
+  }
+}

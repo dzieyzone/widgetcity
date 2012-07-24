@@ -1,0 +1,132 @@
+
+name = Widget City 2012 (Fusion)
+description = Fusion Starter sub-theme. Requires <a href="http://drupal.org/project/fusion">Fusion Core</a> and the <a href="http://drupal.org/project/skinr">Skinr</a> module to enable easy point-and-click theming.
+base theme = fusion_core
+core = 6.x
+engine = phptemplate
+
+stylesheets[all][] = css/reset.css
+stylesheets[all][] = css/defaults.css
+;stylesheets[all][] = css/text.css
+stylesheets[all][] = css/widgetcity2012-style.css
+
+regions[sidebar_first] = sidebar first
+regions[sidebar_last] = sidebar last
+regions[header_top] = header top
+regions[header] = header
+regions[preface_top] = preface top
+regions[preface_bottom] = preface bottom
+regions[content_top] = content top
+regions[content] = content
+regions[content_bottom] = content bottom
+regions[postscript_top] = postscript top
+regions[postscript_bottom] = postscript bottom
+regions[footer] = footer
+regions[node_top] = node top
+regions[node_bottom] = node bottom
+
+features[] = logo
+features[] = name
+features[] = slogan
+features[] = node_user_picture
+features[] = comment_user_picture
+features[] = search
+features[] = favicon
+features[] = primary_links
+features[] = secondary_links
+
+; Default theme settings
+settings[theme_grid] = grid24-960
+settings[theme_grid_options][] = grid24-960
+;settings[theme_grid_options][] = grid16-fluid
+;settings[fluid_grid_width] = fluid-100
+settings[theme_font_size] = font-size-12
+settings[sidebar_layout] = sidebars-split
+settings[sidebar_first_width] = 3
+settings[sidebar_last_width] = 6
+
+; Inherit Skinr styles from Fusion Core
+;skinr[options][inherit_skins] = true
+
+; Disable 12 & 16 column grid block widths inherited from fusion_core
+skinr[grid12-width] =
+skinr[grid12-width][features][] =
+skinr[grid16-width] =
+skinr[grid16-width][features][] =
+
+; Widths for 24 column, 960px grid
+skinr[grid24-width][title] = Width (24 column grid)
+skinr[grid24-width][type] = select
+skinr[grid24-width][features][] = block
+skinr[grid24-width][options][1][label] = 01 unit wide (40px/4.1%)
+skinr[grid24-width][options][1][class] = grid24-1
+skinr[grid24-width][options][2][label] = 02 units wide (80px/8.3%)
+skinr[grid24-width][options][2][class] = grid24-2
+skinr[grid24-width][options][3][label] = 03 units wide (120px/12.5%)
+skinr[grid24-width][options][3][class] = grid24-3
+skinr[grid24-width][options][4][label] = 04 units wide (160px/16.6%)
+skinr[grid24-width][options][4][class] = grid24-4
+skinr[grid24-width][options][5][label] = 05 units wide (200px/20.8%)
+skinr[grid24-width][options][5][class] = grid24-5
+skinr[grid24-width][options][6][label] = 06 units wide (240px/25%)
+skinr[grid24-width][options][6][class] = grid24-6
+skinr[grid24-width][options][7][label] = 07 units wide (280px/29.1%)
+skinr[grid24-width][options][7][class] = grid24-7
+skinr[grid24-width][options][8][label] = 08 units wide (320px/33%)
+skinr[grid24-width][options][8][class] = grid24-8
+skinr[grid24-width][options][9][label] = 09 units wide (360px/37.5%)
+skinr[grid24-width][options][9][class] = grid24-9
+skinr[grid24-width][options][10][label] = 10 units wide (400px/41.6%)
+skinr[grid24-width][options][10][class] = grid24-10
+skinr[grid24-width][options][11][label] = 11 units wide (440px/45.8%)
+skinr[grid24-width][options][11][class] = grid24-11
+skinr[grid24-width][options][12][label] = 12 units wide (480px/50%)
+skinr[grid24-width][options][12][class] = grid24-12
+skinr[grid24-width][options][13][label] = 13 units wide (520px/54.1%)
+skinr[grid24-width][options][13][class] = grid24-13
+skinr[grid24-width][options][14][label] = 14 units wide (560px/58.3%)
+skinr[grid24-width][options][14][class] = grid24-14
+skinr[grid24-width][options][15][label] = 15 units wide (600px/62.5%)
+skinr[grid24-width][options][15][class] = grid24-15
+skinr[grid24-width][options][16][label] = 16 units wide (640px/66%)
+skinr[grid24-width][options][16][class] = grid24-16
+skinr[grid24-width][options][17][label] = 17 units wide (680px70.8%)
+skinr[grid24-width][options][17][class] = grid24-17
+skinr[grid24-width][options][18][label] = 18 units wide (720px/75%)
+skinr[grid24-width][options][18][class] = grid24-18
+skinr[grid24-width][options][19][label] = 19 units wide (760px/79.1%)
+skinr[grid24-width][options][19][class] = grid24-19
+skinr[grid24-width][options][20][label] = 20 units wide (800px/83.3%)
+skinr[grid24-width][options][20][class] = grid24-20
+skinr[grid24-width][options][21][label] = 21 units wide (840px/87.5%)
+skinr[grid24-width][options][21][class] = grid24-21
+skinr[grid24-width][options][22][label] = 22 units wide (880px/91.6%)
+skinr[grid24-width][options][22][class] = grid24-22
+skinr[grid24-width][options][23][label] = 23 units wide (920px/95.8%)
+skinr[grid24-width][options][23][class] = grid24-23
+skinr[grid24-width][options][24][label] = 24 units wide (960px/100%)
+skinr[grid24-width][options][24][class] = grid24-24
+skinr[grid24-width][options][25][label] = NONE
+skinr[grid24-width][options][25][class] = grid24-none
+
+skinr[grid-width][description] = Change the width of this block. Fluid grid % widths are relative to the parent region's width. Default widths: sidebar blocks default to the sidebar width; in other regions width is divided equally among all blocks.
+
+; Sample Skinr style (uncomment to use, see Skinr section in CSS)
+skinr[block-style][title] = Block Styles
+skinr[block-style][type] = checkboxes
+skinr[block-style][features][] = block
+skinr[block-style][options][1][label] = Make it Red
+skinr[block-style][options][1][class] = block-style-red
+skinr[block-style][options][2][label] = Set Background to White
+skinr[block-style][options][2][class] = content-white
+skinr[block-style][options][3][label] = Align center
+skinr[block-style][options][3][class] = content-center
+skinr[block-style][options][4][label] = List links
+skinr[block-style][options][4][class] = content-list-links
+
+; Information added by drupal.org packaging script on 2011-08-04
+version = "6.x-1.12"
+core = "6.x"
+project = "fusion"
+datestamp = "1312498616"
+

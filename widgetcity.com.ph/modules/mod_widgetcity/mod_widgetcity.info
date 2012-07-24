@@ -1,0 +1,7 @@
+name = "Widget City Specifics"
+description = "Provides general functionality of this site"
+package = "Widget Tools"
+core = 6.x
+; Information added by drupal.org packaging script on 2009-09-19
+version = "6.x-2.0"
+project = "mod_widgetcity"

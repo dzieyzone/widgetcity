@@ -1,0 +1,224 @@
+<?php
+define('PESOPAY_PC_DEMO', 'https://test.pesopay.com/b2c2/eng/dPayment/payComp.jsp');
+define('PESOPAY_PC_LIVE', 'https://www.pesopay.com/b2c2/eng/dPayment/payComp.jsp');
+                       
+//define('PESOPAY_DEMO', 'https://test.pesopay.com/b2cDemo/eng/payment/payForm.jsp');
+define('PESOPAY_DEMO', 'https://test.pesopay.com/b2c2/eng/payment/payForm.jsp');
+define('PESOPAY_LIVE', 'https://www.pesopay.com/b2c2/eng/payment/payForm.jsp');
+/**
+ * @file
+ * Process payments using PesoPay PayGate.
+ */
+
+/**
+ * Implementation of hook_menu().
+ */
+function uc_pesopay_menu() {
+  $items = array();
+
+  $items['pesopay/success'] = array(
+    'title' => 'Order complete',
+    'page callback' => 'uc_pesopay_success',
+    'access callback' => 'uc_pesopay_access',
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_pesopay.pages.inc',
+  );
+  $items['pesopay/fail'] = array(
+    'title' => 'Order complete',
+    'page callback' => 'uc_pesopay_fail',
+    'access callback' => 'uc_pesopay_access',
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_pesopay.pages.inc',
+  );
+  $items['pesopay/cancel'] = array(
+    'title' => 'Order complete',
+    'page callback' => 'uc_pesopay_cancel',
+    'access callback' => 'uc_pesopay_access',
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_pesopay.pages.inc',
+  );
+  // The main handler for complete transaction.
+  $items['pesopay/datafeed'] = array(
+    'title' => 'Order complete',
+    'page callback' => 'uc_pesopay_datafeed',
+    'access callback' => 'uc_pesopay_access',
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_pesopay.pages.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Make sure anyone can complete their PesoPay PayGate orders.
+ * Full access
+ */
+function uc_pesopay_access() {
+  return TRUE;
+}
+
+/**
+ * Implementation of hook_init().
+ */
+function uc_pesopay_init() {
+  global $conf;
+  $conf['i18n_variables'][] = 'uc_pesopay_checkout_button';
+}
+
+/**
+ * Implementation of hook_form_alter().
+ */
+function uc_pesopay_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'uc_cart_checkout_review_form' && ($order_id = intval($_SESSION['cart_order'])) > 0) {
+    $order = uc_order_load($order_id);
+
+    if ($order->payment_method == 'pesopay') {
+      unset($form['submit']);
+      $form['#prefix'] = '<table id="two-checkout-review-table"><tr><td>';
+      $form['#suffix'] = '</td><td>'. drupal_get_form('uc_pesopay_form', $order) .'</td></tr></table>';
+    }
+  }
+}
+
+/**
+ * Implementation of hook_payment_method().
+ */
+function uc_pesopay_payment_method() {
+  $gateways[] = array(
+    'id' => 'pesopay',
+    'name' => t('PesoPay PayGate'),
+    'title' => t('PesoPay PayGate - provides secure, multi-channel, multi-lingual and multi-currency payment services.'),
+    'review' => t('PesoPay Client Post'),
+    'desc' => t('Process credit card or PayPal payments using PesoPay PayGate.'),
+    'callback' => 'uc_payment_method_pesopay',
+    'weight' => 1,
+    'checkout' => FALSE,
+    'no_gateway' => TRUE,
+  );
+
+  return $gateways;
+}
+
+/**
+ * Callback for payment gateway settings.
+ */
+function uc_payment_method_pesopay($op, &$arg1) {
+  switch ($op) {
+    case 'order-view':
+      $payref = db_result(db_query("SELECT payref FROM {uc_pesopay_datafeed} WHERE ref = %d ORDER BY cdatetime ASC", $arg1->order_id));
+      if (empty($payref)) {
+        $payref = t('Unknown');
+      }
+      return t('PesoPay Payment Reference Number:<br />@payref', array('@payref' => $payref));
+
+    case 'settings':
+      $form['pesopay']['uc_pesopay_id'] = array(
+        '#type' => 'textfield',
+        '#title' => t('PesoPay ID'),
+        '#description' => t('The merchant id used for the PesoPay service.'),
+        '#default_value' => variable_get('uc_pesopay_id', '1'),
+      );
+      $form['pesopay']['uc_pesopay_paytype'] = array(
+        '#type' => 'select',
+        '#title' => t('PesoPay Payment Type'),
+        '#description' => t('Choose type of payment'),
+        '#options' => array(
+				  'ALL' => t('All the available payment method'),
+					'CC'  => t('Credit Card Payment'),
+					'PPS' => t('PesoPay PPS Payment'),
+					'PAYPAL' => t('PayPal By PesoPay Payment'),
+					'CUP' => t('PesoPay CUP Payment'),
+					'GCash' => t('Globe GCash Mobile Payment'),
+					'BancNet' => t('BancNet Debit Card Payment'),
+        ),
+        '#default_value' => variable_get('uc_pesopay_paytype', 'ALL'),
+      );
+      $form['pesopay']['uc_pesopay_handler'] = array(
+        '#type' => 'select',
+        '#title' => t('PesoPay server'),
+        '#description' => t('Sign up for and use a Sandbox account for testing.'),
+        '#options' => array(
+          PESOPAY_DEMO => t('Sandbox'),
+          PESOPAY_LIVE => t('Live'),
+        ),
+        '#default_value' => variable_get('uc_pesopay_handler', PESOPAY_DEMO),
+      );
+      $form['pesopay']['uc_pesopay_currency'] = array(
+        '#type' => 'select',
+        '#title' => t('Currency code'),
+        '#description' => t('Transactions can only be processed in one of the listed currencies.'),
+        '#options' => array(
+				  '608' => 'PHP',
+          '344' => 'HKD',
+          '840' => 'USD',
+          '702' => 'SGD',
+          '156' => 'CNY',
+          '392' => 'JPY',
+          '901' => 'TWD',
+          '036' => 'AUD',
+          '978' => 'EUR',
+          '826' => 'GBP',
+          '124' => 'CAD',
+        ),
+        '#default_value' => variable_get('uc_pesopay_currency', '608'),
+      );
+      $form['pesopay']['uc_pesopay_language'] = array(
+        '#type' => 'select',
+        '#title' => t('Language'),
+        '#description' => t('Please choose the language page.'),
+        '#options' => array(
+          'E' => t('English'),
+          'C' => t('Traditional Chinese'),
+          'X' => t('Simplified Chinese'),
+          'K' => t('Korean'),
+          'J' => t('Japanese'),
+        ),
+        '#default_value' => variable_get('uc_pesopay_language', 'E'),
+      );
+      $form['pesopay']['uc_pesopay_checkout_button'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Order review submit button text'),
+        '#description' => t('Provide PesoPay PayGate specific text for the submit button on the order review page.'),
+        '#default_value' => variable_get('uc_2checkout_checkout_button', t('Submit Order')),
+      );
+
+      return $form;
+  }
+}
+
+/**
+ * Form to build the submission to PesoPay.com in HTML hidden form.
+ */
+function uc_pesopay_form($form_state, $order) {
+  $data = array(
+	  'orderRef' => $order->order_id,
+    'amount' => $order->order_total,
+    'currCode' => variable_get('uc_pesopay_currency', '344'),
+    'lang' => variable_get('uc_pesopay_language', 'E'),
+    'cancelUrl' => url('pesopay/cancel/'. $order->order_id, array('absolute' => TRUE) ),
+    'failUrl' => url('pesopay/fail/'. $order->order_id, array('absolute' => TRUE) ),
+    'successUrl' => url('pesopay/success/'. $order->order_id, array('absolute' => TRUE) ),
+    'merchantId' => variable_get('uc_pesopay_id', '1'),
+    'payType' => 'N',
+		'payMethod' => variable_get('uc_pesopay_paytype','ALL'),
+//    'actionUrl' => variable_get('uc_pesopay_handler', PESOPAY_DEMO),	
+//    'code' => 'pesopay',
+//    'orderId' => $order->order_id,
+    'remark' => uc_cart_get_id(),
+  );
+
+  $form['#action'] = variable_get('uc_pesopay_handler', PESOPAY_DEMO);
+
+  foreach ($data as $name => $value) {
+    if (!empty($value)) {
+      $form[$name] = array('#type' => 'hidden', '#value' => $value);
+    }
+  }
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => variable_get('uc_pesopay_checkout_button', t('Submit Order')),
+  );
+
+  return $form;
+}

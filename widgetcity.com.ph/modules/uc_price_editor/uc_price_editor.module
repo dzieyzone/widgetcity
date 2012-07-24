@@ -1,0 +1,384 @@
+<?php
+/**
+ * Implementation of hook_help()
+ */
+function uc_price_editor_help($path, $arg) {
+	if($path == 'admin/help#uc_price_editor') {
+		$txt = 'Edit multiple product price.';
+		return '<p>' . t($txt) . '</p>';
+	}
+}
+
+function uc_price_editor_menu() {
+	$items = array();
+
+	$items['admin/store/products/price-editor'] = array(
+		'title' => 'Product Price Editor',
+		'description' => 'List page of all the products available to edit',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('uc_price_editor_page'),
+		'access arguments' => array('administer products'),
+		'type' => MENU_NORMAL_ITEM
+	);
+	
+	$items['price-editor/save'] = array(
+		'page callback' => 'uc_price_editor_save',
+		'access arguments' => array('administer nodes'),
+		'file' =>'uc_price_editor.inc',
+		'type' => MENU_CALLBACK
+	);
+	
+	$items['admin/store/products/price-editor/filter/%'] = array(
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('uc_price_editor_filter_page'),
+		'access arguments' => array('administer nodes'),
+		'type' => MENU_NORMAL_ITEM
+	);
+	
+	$items['admin/store/settings/price-editor'] = array(
+		'title' => 'Product Price Editor settings',
+		'description' => 'Product Editor setting page',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('uc_price_editor_admin'),
+		'access arguments' => array('administer products'),
+		'type' => MENU_NORMAL_ITEM,
+	);
+
+	return $items;
+}
+
+function uc_price_editor_imagecache_default_presets() {
+	$presets = array();
+	$presets['product_thumb'] = array(
+		'presetname' => 'product_thumb',
+		'actions' => array(
+			0 => array(
+				'weight' => '0',
+				'module' => 'imagecache',
+				'action' => 'imagecache_scale_and_crop',
+				'data' => array(
+					'width' => '125',
+					'height' => '125'
+				)
+			)		   
+		),
+	);
+	
+	return $presets;
+}
+
+function uc_price_editor_admin() {
+	$form['uc_price_editor']['columns'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Multi Product Editor Column settings'),
+		'#description' => t('Select what are the columns you wish to appear.'),
+		'#collapsible' => 1,
+		'#collapsed' => 0,
+		'uc_price_editor_image' => array(
+		  '#type' => 'checkbox', '#title' => t('Image column'), '#default_value' => variable_get('uc_price_editor_image', 1)),
+		'uc_price_editor_sku' => array(
+			'#type' => 'checkbox', '#title' => t('SKU colum'), '#default_value' => variable_get('uc_price_editor_sku', 1)),
+		'uc_price_editor_list_price' => array(
+			'#type' => 'checkbox', '#title' => t('List Price column'), '#default_value' => variable_get('uc_price_editor_list_price', 1)),
+		'uc_price_editor_cost' => array(
+			'#type' => 'checkbox', '#title' => t('Cost column'), '#default_value' => variable_get('uc_price_editor_cost', 1)),
+		'uc_price_editor_sell_price' => array(
+			'#type' => 'checkbox', '#title' => t('Sell column'), '#default_value' => variable_get('uc_price_editor_sell_price', 1)),
+		'uc_price_editor_shippable' => array(
+			'#type' => 'checkbox', '#title' => t('Product Shippable'), '#default_value' => variable_get('uc_price_editor_shippable', 1)),
+		'uc_price_editor_weight' => array(
+			'#type' => 'checkbox', '#title' => t('Weight column'), '#default_value' => variable_get('uc_price_editor_weight', 1)),
+		'uc_price_editor_unit_of_measurement' => array(
+			'#type' => 'checkbox', '#title' => t('Unit of Measurement column'), '#default_value' => variable_get('uc_price_editor_unit_of_measurement', 1)),
+		'uc_price_editor_height' => array(
+			'#type' => 'checkbox', '#title' => t('Height column'), '#default_value' => variable_get('uc_price_editor_height', 1)),
+		'uc_price_editor_width' => array(
+			'#type' => 'checkbox', '#title' => t('Width column'), '#default_value' => variable_get('uc_price_editor_width', 1)),
+		'uc_price_editor_length' => array(
+			'#type' => 'checkbox', '#title' => t('Length column'), '#default_value' => variable_get('uc_price_editor_length', 1))
+	);
+	
+	$form['uc_price_editor']['imagecache_presets'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Image cache presets'),
+		'#description' => t('Select from your available imagecache presets in this site'),
+		'#collapsible' => 1,
+		'#collapsed' => 0,
+		'select_presets' => array(
+			'#type' => 'select',
+			'#title' => t('Presets name'),
+			'#default_value' => variable_get('select_presets', 'thumbnail'),
+			'#options' => build_options()
+		)
+	);
+	$type = 'product';
+	$result = db_query("SELECT * FROM {vocabulary_node_types} v WHERE v.type = '%s'", $type);
+	if (db_affected_rows($result)) {
+		while ($r = db_fetch_array($result)) {
+			variable_set('product_voc', $r['vid']);	
+		}
+		
+		$form['uc_price_editor']['enable_categorization'] = array(
+			'#type' => 'fieldset',
+			'#title' => t('Enable Product Categorization'),
+			'#description' => t('Enables you to filter product per category'),
+			'#collapsible' => 1,
+			'#collapsed' => 0,
+			'categorization_enable' => array('#type' => 'checkbox', '#title' => t('Enabled'), '#default_value' => variable_get('categorization_enable', 1))
+		);
+	}
+	else {
+		drupal_set_message('No category type found for product type');
+	}
+	
+	return system_settings_form($form);
+}
+
+function uc_price_editor_save() {
+	$p = new MultiProductEditor($_POST['obj']);
+	$p->update();
+}
+
+function build_options() {
+	$result = db_query("SELECT * FROM {imagecache_preset}");
+	$affected = db_affected_rows($result);
+	if($affected) {
+		while($rows = db_fetch_array($result)) {
+			$options[$rows['presetname']] = $rows['presetname'];
+		}
+		return $options;
+	}
+}
+
+function uc_price_editor_filter_page() {
+	drupal_add_css(drupal_get_path('module', 'uc_price_editor') . '/css/uc_price_editor.css');
+	drupal_add_js(drupal_get_path('module', 'uc_price_editor') . '/js/json2.js');
+	drupal_add_js(drupal_get_path('module', 'uc_price_editor') . '/js/uc_price_editor.js');
+	
+	if (variable_get('categorization_enable', 1) == 1) {
+		$type = 'product';
+		$counter = 0;
+		$result = db_query("SELECT * FROM {vocabulary_node_types} v WHERE v.type = '%s'", $type);
+		$options = '<option value="none">--select--</option>';
+		if (db_affected_rows($result)) {
+			while ($r = db_fetch_array($result)) {
+				$vocabulary = taxonomy_vocabulary_load($r['vid']);
+				$q1 = db_query("SELECT * FROM {term_data} t WHERE t.vid = '%d'", $r['vid']);
+				if (db_affected_rows($q1)) {
+					while ($r1 = db_fetch_array($q1)) {
+						$options .= "<option value='".$r1['tid']."'>" . $r1['name'] . "</option>";
+					}
+					$html .= "<div><span>Filter by ".$vocabulary->name."</span>: <select id='productcategoryterm-".$counter."'>" . $options . "</select><a id='filter-".$counter."' class='filter' href='/admin/store/products/price-editor/filter'><input type='button' value='Filter' id='filterproduct-".$counter."' /></a></div>";
+					$options = '<option value="none">--select--</option>';
+					$counter++;
+				}
+			}
+		}	
+	}
+	
+	// column names for the product table
+	$columns = array('image', 'sku', 'list_price', 'cost', 'sell_price', 'shippable', 'weight', 'unit_of_measurement', 'height', 'width', 'length');
+	$html .= '<table cellpadding="0" cellspacing="0" id="mpe-table"><tr>';
+  $html .= '<th>' . t('Title') . '</th>';
+	for($i = 0; $i < count($columns); $i++) {
+		if(variable_get('uc_price_editor_'.$columns[$i], 1)) {
+			$html .= '<th>' . $columns[$i] . '</th>';
+			$ac[] = $columns[$i];
+		}
+	}
+	
+	$html .= '<th>&nbsp;</th></tr>';
+	$res = db_query("SELECT * FROM {term_node} t WHERE t.tid = '%d' LIMIT 50", arg(5));
+	if (db_affected_rows($res)) {
+		while ($rows = db_fetch_array($res)) {	
+			$html .= getProductInfo($rows['nid'], $ac, $columns);
+		}
+		
+		$html .= '</table>';
+		$page = array();
+
+		$page['content'] = array(
+			'#title' => t('Product Editor'),
+			'#value' => $html . '<div class="clear-block button-wrap"><input id="sc" type="button" value="Save Changes"></div>'
+		);
+	
+		return $page;
+	}
+	else {
+		drupal_set_message('There are no products on the category chosen. <br /> <a href="/admin/store/products/price-editor">Go back to Multi Product Editor</a>');
+	}
+}
+
+// returns the variable $page that contains the setup look for this module page.
+function uc_price_editor_page() {
+	drupal_add_css(drupal_get_path('module', 'uc_price_editor') . '/css/uc_price_editor.css');
+	drupal_add_js(drupal_get_path('module', 'uc_price_editor') . '/js/json2.js');
+	drupal_add_js(drupal_get_path('module', 'uc_price_editor') . '/js/uc_price_editor.js');
+	
+	if (variable_get('categorization_enable', 1) == 1) {
+		$type = 'product';
+		$counter = 0;
+		$result = db_query("SELECT * FROM {vocabulary_node_types} v WHERE v.type = '%s'", $type);
+		$options = '<option value="none">--select--</option>';
+		if (db_affected_rows($result)) {
+			while ($r = db_fetch_array($result)) {
+				$vocabulary = taxonomy_vocabulary_load($r['vid']);
+				$q1 = db_query("SELECT * FROM {term_data} t WHERE t.vid = '%d'", $r['vid']);
+				if (db_affected_rows($q1)) {
+					while ($r1 = db_fetch_array($q1)) {
+						$options .= "<option value='".$r1['tid']."'>" . $r1['name'] . "</option>";
+					}
+					$html .= "<div><span>Filter by ".$vocabulary->name."</span>: <select id='productcategoryterm-".$counter."'>" . $options . "</select><a id='filter-".$counter."' class='filter' href='/admin/store/products/price-editor/filter'><input type='button' value='Filter' id='filterproduct-".$counter."' /></a></div>";
+					$options = '<option value="none">--select--</option>';
+					$counter++;
+				}
+			}
+		}	
+	}
+	
+	if (variable_get('product_filter_by', 0) == 0) {
+		// column names for the product table
+		$columns = array('image', 'sku', 'list_price', 'cost', 'sell_price', 'shippable', 'weight', 'unit_of_measurement', 'height', 'width', 'length');	
+		// First is to find out whether there are existing products within your site.
+		$result = db_query("SELECT * FROM {node} n WHERE n.type = 'product' LIMIT 50");
+		$affectedRows = db_affected_rows($result);
+		$html .= '<div><table cellpadding="0" cellspacing="0" id="mpe-table"><tr>';
+		$html .= '<th>' . t('Title') . '</th>';
+		foreach ($columns as $cid=>$column) {
+			if(variable_get('uc_price_editor_'.$column, 1)) {
+				$html .= '<th>' . $column . '</th>';
+				$ac[] = $column;
+			}
+		}
+		$html .= '<th>&nbsp;</th></tr>';
+		if($affectedRows > 0) {
+			while($rows = db_fetch_array($result)) {
+				$html .= getProductInfo($rows['nid'], $ac, $columns);
+			}
+			$html .= '</table></div>';
+			$page = array();
+	
+			$page['content'] = array(
+				'#title' => t('Product Price Editor'),
+				'#value' => $html . '<div class="clear-block button-wrap"><input id="sc" type="button" value="Save Changes"></div>'
+			);
+		
+			return $page;
+		}
+		else { drupal_set_message('There are no products in this site.'); }	
+	}
+}
+
+// used to get the info of a particular product using it's nid value.
+function getProductInfo($nid, $enabled, $fields) {
+	$product = node_load($nid);
+	$markup = '<tr id="tr-'.$product->nid.'">';
+	$markup .= '<td>' . l($product->title,'node/'.$product->nid) . '</td>';
+	$hidden_markup = '';
+	foreach ($fields as $row) {
+		if (in_array($row,$enabled)) {
+			switch($row) {
+				case 'image':
+					$markup .= '<td><a href="'.url('node/' . $product->nid) . '">'. theme('imagecache', variable_get('select_presets', ''), $product->field_image[0]['filepath'], $product->field_image[0]['data']['alt'], $product->field_image[0]['data']['title']) . '<br />' . $product->title . '</a></td>';
+				break;
+				case 'sku' :
+					$markup .= '<td><input id="sku-' . $product->nid . '" type="text" value="' . $product->model . '" class="fivecolumn" /></td>';
+				break;
+				case 'list_price' :
+					$markup .= '<td><input id="listprice-' . $product->nid . '" type="text" value="' . $product->list_price . '" class="fivecolumn" disabled /></td>';
+				break;
+				case 'cost' :
+					$markup .= '<td><input id="cost-' . $product->nid . '" type="text" value="' . $product->cost . '" class="fivecolumn" disabled /></td>';
+				break;
+				case 'sell_price' :
+					$markup .= '<td><input id="sellprice-' . $product->nid . '" type="text" value="' . $product->sell_price . '" class="fivecolumn" disabled /></td>';
+				break;
+				case 'shippable' :
+					($product->shippable == 1) ? $markup .= '<td><input id="shippable-'. $product->nid .'" type="checkbox" value="' . $product->shippable . '" checked="true" class="form-checkbox fivecolumn shippable" disabled /></td>' : $markup .= '<td><input id="shippable-'. $product->nid .'" type="checkbox" value="' . $product->shippable . '" class="shippable form-checkbox fivecolumn" disabled /></td>' ;
+					break;
+				case 'unit_of_measurement' :
+					$markup .= '<td><input id="measurement-' . $product->nid . '" type="text" value="' . $product->weight_units . '" class="fivecolumn" disabled /></td>';
+				break;
+				case 'weight' :
+					$markup .= '<td><input id="weight-' . $product->nid . '" type="text" value="' . $product->weight . '" class="fivecolumn" disabled /></td>';
+				break;
+				case 'height' :
+					$markup .= '<td><input id="height-' . $product->nid . '" type="text" value="' . $product->height . '" class="fivecolumn" disabled/></td>';
+				break;
+				case 'width' :
+					$markup .= '<td><input id="width-' . $product->nid . '" type="text" value="' . $product->width . '" class="fivecolumn" disabled /></td>';
+				break;
+				case 'length' :
+					$markup .= '<td><input id="length-' . $product->nid . '" type="text" value="' . $product->length . '" class="fivecolumn" disabled /></td>';
+				break;
+			}
+		}
+		elseif ($row != 'image') {
+			$hidden_markup .= '<input id="'. $row . '-'. $product->nid . '" type="hidden" value="' . $product->{$row} . '" />';
+		}
+	}
+	$markup .= '<td class="td-checker"><input type="checkbox" id="checkbox-' . $product->nid . '" />';
+	$markup .= $hidden_markup;
+	$markup .= '<input id="vid-' . $product->nid . '" type="hidden" value="' . $product->vid . '" />';
+	$markup .='</td></tr>';
+	return $markup;
+}
+
+function uc_price_editor_uc_invoice_templates() {
+  return array('admin', 'customer', 'productorder');
+}
+
+// Builds a paged list and overview of existing product fees.
+function uc_price_editor_categorization_form() {
+    $form = array();
+
+  $result = pager_query("SELECT f.fid, f.fid, f.name, f.weight, f.type, f.price, f.is_active FROM {uc_fees} AS f GROUP BY f.fid, f.name, f.weight, f.type, f.price". tablesort_sql($header), 30, 0, "SELECT COUNT(fid) FROM {uc_fees}");
+  while ($fee = db_fetch_object($result)) {
+    $form['fees'][$fee->fid] = array(
+      'name' => array(
+        '#value' => $fee->name,
+      ),
+      'weight' => array(
+        '#type' => 'weight',
+        '#default_value' => $fee->weight,
+        '#attributes' => array('class' => 'uc-fee-table-weight'),
+      ),
+      'type' => array(
+        '#value' => theme('uc_fee_type', $fee),
+      ),
+      'price' => array(
+        '#value' => theme('uc_fee_price', $fee),
+      ),
+      'is_active' => array(
+        '#value' => ($fee->is_active)? 'yes' : 'no',
+      ),
+      /*'max_applications' => array(
+        '#value' => $fee->max_applications,
+      ),
+      'do_end_processing' => array(
+        '#value' => $fee->do_end_processing,
+      ),
+      'is_exclusive' => array(
+        '#value' => $fee->is_exclusive,
+      ),*/
+      'ops' => array(
+        '#value' => l(t('edit'), 'admin/store/fees/'. $fee->fid .'/edit') .' '.
+                    l(t('conditions'), CA_UI_PATH .'/uc_fee_'. $fee->fid .'/edit/conditions') .' '.
+                    l(t('delete'), 'admin/store/fees/'. $fee->fid .'/delete') .' ',
+                    
+      ),
+    );
+  }
+
+  if (!empty($form['fees'])) {
+    $form['fees']['#tree'] = TRUE;
+
+    $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Save changes'),
+      '#weight' => 10,
+    );
+  }
+
+  return $form;
+}

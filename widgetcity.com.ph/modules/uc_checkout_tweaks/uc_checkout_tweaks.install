@@ -1,0 +1,32 @@
+<?php
+// $Id: uc_checkout_tweaks.install,v 1.1 2010/10/25 06:52:06 longwave Exp $
+
+/**
+ * Implementation of hook_enable().
+ */
+function uc_checkout_tweaks_enable() {
+  if (module_exists('uc_checkout_preview')) {
+    module_disable(array('uc_checkout_preview'));
+    if (variable_get('uc_checkout_preview_hide_shipping_review', FALSE)) {
+      variable_set('uc_checkout_tweaks_hide_shipping_review', TRUE);
+    }
+    drupal_set_message(t('The "Checkout order preview pane" module has been disabled, as "Checkout tweaks" includes this functionality.'));
+  }
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function uc_checkout_tweaks_uninstall() {
+  variable_del('uc_checkout_tweaks_amazon_style');
+  variable_del('uc_checkout_tweaks_default_first_address');
+  variable_del('uc_checkout_tweaks_default_same_address');
+  variable_del('uc_checkout_tweaks_no_collapse');
+  variable_del('uc_checkout_tweaks_quote_table');
+  variable_del('uc_checkout_tweaks_hide_shipping_review');
+  variable_del('uc_checkout_tweaks_single_payment_method');
+  variable_del('uc_pane_checkout_preview_enabled');
+  variable_del('uc_pane_quotes_button_text');
+  db_query("DELETE FROM {variable} WHERE name LIKE 'uc_pane_%%_title'");
+  db_query("DELETE FROM {variable} WHERE name LIKE 'uc_payment_method_%%_title'");
+}

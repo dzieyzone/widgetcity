@@ -1,0 +1,276 @@
+<?php // $Id $
+
+
+function meebo_menu() {
+	$items['admin/settings/meebo'] = array(
+		'title' => t('Meebo bar'),
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('meebo_settings'),
+		'access arguments' => array('access administration pages'),
+		'description' => t('Configure how users share and communicate with friends via the Meebo Bar at the bottom of the page of your site.'),
+		'type' => MENU_NORMAL_ITEM,
+	);
+	
+	return $items;
+}
+
+function meebo_settings() {
+	drupal_add_js(drupal_get_path('module', 'meebo') . '/meebo.admin.js');
+	
+	$form['meebo_account']['meebo_id'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Meebo Network Id'),
+		'#description' => t('Your meebo network id looks like this: https://dashboard.meebo.com/<b>mysite_pu68fu</b>/<br />
+			If you don\'t have a meebo account you can <a target="_blank" href="https://bar.meebo.com/setup/1/">apply now</a>.'),
+		'#default_value' => variable_get('meebo_id', ''),
+		'#size' => 30,
+	);
+	
+	$form['meebo_sharing'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Sharing of Images and Videos'),
+		'#collapsible' => TRUE,
+	);
+	
+	$form['meebo_sharing']['meebo_sharing'] = array(
+		'#type' => 'radios',
+		'#options' => array(
+			t('Make everything sharable.'),
+			t('Discover sharable items: Scan for elements based on a given criteria.'),
+		),
+		
+		'#default_value' => variable_get('meebo_sharing', 0),
+	);
+	
+	$form['meebo_sharing']['meebo_discover'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Parameters for discovering sharable items'),
+		'#collapsible' => TRUE,	
+		'#attributes' => array('id' => 'meebo-discover', 'style' => 'display: none'),
+	);
+	
+	$form['meebo_sharing']['meebo_discover']['meebo_discover_element'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Element'),
+		'#description' => t('Element scanned for sharable items, can be element id, or element object'),
+		'#default_value' => variable_get('meebo_discover_element', ''),
+		'#size' => 30,
+	);	
+	
+	$form['meebo_sharing']['meebo_discover']['meebo_discover_title'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Title'),
+		'#description' => t('Title that will be included along with the shared element'),
+		'#default_value' => variable_get('meebo_discover_title', ''),
+		'#size' => 30,
+	);
+
+	$form['meebo_sharing']['meebo_discover']['meebo_discover_url'] = array(
+		'#type' => 'textfield',
+		'#title' => t('URL'),
+		'#description' => t('URL that a share recipient will be directed to'),
+		'#default_value' => variable_get('meebo_discover_url', ''),
+		'#size' => 30,
+	);
+
+	$form['meebo_sharing']['meebo_discover']['meebo_discover_thumbnail'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Thumbnail'),
+		'#description' => t('URL of thumbnail image to be used when shared'),
+		'#default_value' => variable_get('meebo_discover_thumbnail', ''),
+		'#size' => 30,
+	);	
+	
+	$form['meebo_sharing']['meebo_discover']['meebo_discover_thumbnailWidth'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Thumbnail Width'),
+		'#description' => t('Width of the thumbnail specified - highly recommended if using \'thumbnail\''),
+		'#default_value' => variable_get('meebo_discover_thumbnailWidth', ''),
+		'#size' => 30,
+	);	
+
+	$form['meebo_sharing']['meebo_discover']['meebo_discover_thumbnailHeight'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Thumbnail Height'),
+		'#description' => t('Height of the thumbnail specified - highly recommended if using \'thumbnail\''),
+		'#default_value' => variable_get('meebo_discover_thumbnailHeight', ''),
+		'#size' => 30,
+	);	
+
+	$form['meebo_sharing']['meebo_discover']['meebo_discover_description'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Description'),
+		'#description' => t('Text description that will be pre-populated in facebook description field'),
+		'#default_value' => variable_get('meebo_discover_description', ''),
+		'#size' => 30,
+	);	
+	
+	$form['meebo_sharing']['meebo_discover']['meebo_discover_tweet'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Tweet'),
+		'#description' => t('Text to accompany url in tweet to twitter'),
+		'#default_value' => variable_get('meebo_discover_tweet', ''),
+		'#size' => 30,
+	);
+
+	$form['meebo_sharing']['meebo_discover']['meebo_discover_minImageWidth'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Minimum Image Width'),
+		'#description' => t('Minimum width in order for an img tag to become sharable'),
+		'#default_value' => variable_get('meebo_discover_minImageWidth', ''),
+		'#size' => 30,
+	);	
+	
+	$form['meebo_sharing']['meebo_discover']['meebo_discover_minImageHeight'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Minimum Image Height'),
+		'#description' => t('Minimum height in order for an img tag to become sharable'),
+		'#default_value' => variable_get('meebo_discover_minImageHeight', ''),
+		'#size' => 30,
+	);
+
+	$form['meebo_sharing']['meebo_discover']['meebo_discover_minVideoWidth'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Minimum Video Width'),
+		'#description' => t('Minimum width in order for an embed tag to become sharable'),
+		'#default_value' => variable_get('meebo_discover_minVideoWidth', ''),
+		'#size' => 30,
+	);
+
+	$form['meebo_sharing']['meebo_discover']['meebo_discover_minVideoHeight'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Minimum Video Height'),
+		'#description' => t('Minimum height in order for an embed tag to become sharable'),
+		'#default_value' => variable_get('meebo_discover_minVideoHeight', ''),
+		'#size' => 30,
+	);	
+	
+	$form['meebo_sharing']['meebo_discover']['meebo_discover_minWidth'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Minimum Width'),
+		'#description' => t('Minimum width in order for an img or an embed tag to become sharable'),
+		'#default_value' => variable_get('meebo_discover_minHeight', ''),
+		'#size' => 30,
+	);	
+
+	$form['meebo_sharing']['meebo_discover']['meebo_discover_minHeight'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Minimum Height'),
+		'#description' => t('Minimum height in order for an img or an embed tag to become sharable'),
+		'#default_value' => variable_get('meebo_discover_minHeight', ''),
+		'#size' => 30,
+	);		
+	
+	$form['page_vis_settings'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Page specific visibility settings'),
+		'#collapsible' => TRUE,
+	);
+
+	$access = user_access('use PHP for block visibility');
+	
+	$options = array(t('Show on every page except the listed pages.'), t('Show on only the listed pages.'));
+	$description = t("Enter one page per line as Drupal paths. The '*' character is a wildcard. Example paths are %blog for the blog page and %blog-wildcard for every personal blog. %front is the front page.", array('%blog' => 'blog', '%blog-wildcard' => 'blog/*', '%front' => '<front>'));
+	
+	if ($access) {
+	  $options[] = t('Show if the following PHP code returns <code>TRUE</code> (PHP-mode, experts only).');
+	  $description .= ' '. t('If the PHP-mode is chosen, enter PHP code between %php. Note that executing incorrect PHP-code can break your Drupal site.', array('%php' => '<?php ?>'));
+	}
+	
+	$form['page_vis_settings']['meebo_visibility'] = array(
+	  '#type' => 'radios',
+	  '#title' => t('Show Meebo Bar on specific pages'),
+	  '#options' => $options,
+	  '#default_value' => variable_get('meebo_visibility', 0),
+	);
+	
+	$form['page_vis_settings']['meebo_pages'] = array(
+	  '#type' => 'textarea',
+	  '#title' => t('Pages'),
+	  '#default_value' => variable_get('meebo_pages', ''),
+	  '#description' => $description,
+	);
+		
+	return system_settings_form($form);
+}
+
+function meebo_init() {
+	
+	$enabled = TRUE;
+	$meebo_pages = variable_get('meebo_pages', '');
+	$meebo_visibility = variable_get('meebo_visibility', 0);
+	
+	if ($meebo_visibility < 2) {
+	$path = drupal_get_path_alias($_GET['q']);
+	// Compare with the internal and path alias (if any).
+	$page_match = drupal_match_path($path, $meebo_pages);
+	if ($path != $_GET['q']) {
+		$enabled = $page_match || drupal_match_path($_GET['q'], $meebo_pages);
+	}
+		// When $meebo_visibility has a value of 0, the bar is displayed on
+		// all pages except those listed in $meebo_pages. When set to 1, it
+		// is displayed only on those pages listed in $meebo_pages.
+		$enabled = !($meebo_visibility xor $page_match);
+	}
+	else {
+		$enabled = drupal_eval($meebo_pages);
+	}
+  	
+	if($enabled) {
+		$meebo_id = variable_get('meebo_id', '');
+		
+		$js = "if (typeof Meebo == 'undefined') {
+		Meebo=function(){(Meebo._=Meebo._||[]).push(arguments)};
+		(function(q){
+			var args = arguments;
+			if (!document.body) { return setTimeout(function(){ args.callee.apply(this, args) }, 100); }
+			var d=document, b=d.body, m=b.insertBefore(d.createElement('div'), b.firstChild); s=d.createElement('script');
+			m.id='meebo'; m.style.display='none'; m.innerHTML='<iframe id=\"meebo-iframe\"></iframe>';
+			s.src='http'+(q.https?'s':'')+'://'+(q.stage?'stage-':'')+'cim.meebo.com/cim/cim.php?network='+q.network;
+			b.insertBefore(s, b.firstChild);
+		
+		})({network:'{$meebo_id}'});
+		
+		}";	
+		
+		// Add basic Meebo js
+		drupal_add_js($js, 'inline', 'header');
+		
+		// Add Meebo sharing settings
+		meebo_sharing_settings_to_js();
+		
+		// Dom Ready
+		drupal_add_js('Meebo("domReady");', 'inline', 'footer');		
+	}
+}
+
+function meebo_sharing_settings_to_js() {
+	$sharing = variable_get('meebo_sharing', 0);
+	
+	if($sharing == 0) { // Make everything sharable
+		drupal_add_js('Meebo("makeEverythingSharable");', 'inline', 'header');
+	} else if($sharing == 1) { // Discover sharable items
+		$js = "Meebo('discoverSharable', {\n";
+		$meebo_settings = meebo_settings();
+		$meebo_discover = $meebo_settings['meebo_sharing']['meebo_discover'];
+		$settings = array();
+		
+		foreach($meebo_discover as $key => $values) {
+			$val = variable_get($key, '');
+			
+			if($val) {
+				$settings[$key] = $val;
+			}
+		}
+	
+		foreach($settings as $key => $value) {
+			$key = str_replace('meebo_discover_', '', $key);
+			$js .= "{$key}: '{$value}', \n";
+		}
+		
+		$js = substr($js, 0, strlen($js) - 3);
+		$js .= "\n});";
+		
+		drupal_add_js($js, 'inline', 'header');
+	}
+}

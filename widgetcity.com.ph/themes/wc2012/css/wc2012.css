@@ -1,0 +1,13 @@
+@charset "utf-8";
+/* CSS Document */
+#page-outer {
+	background: #D6D6D6 url(../images/bg-extend1.jpg) repeat-y top center;
+}
+#page {
+	background: url(../images/bg1.jpg) no-repeat top center;
+	padding-top:10px;
+}
+
+#header-last {
+	background:#ec4332;
+}

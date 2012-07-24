@@ -1,0 +1,34 @@
+/* $Id: dark.css,v 1.2.4.3 2009/03/20 23:35:58 pasqualle Exp $ */
+
+.quicktabs_main.quicktabs-style-dark{
+  padding:10px;
+  clear:both;
+}
+ul.quicktabs_tabs.quicktabs-style-dark{
+  padding:5px 5px 0 5px;
+  font-weight:bold;
+	font-size:14px;
+  margin:0;
+	background:#222;
+}
+ul.quicktabs_tabs.quicktabs-style-dark a{
+  font:bold 16px/23px Verdana !important;
+  text-decoration:none;
+  color:#FFF;
+}
+ul.quicktabs_tabs.quicktabs-style-dark a:hover{
+  color:#555  !important;
+}
+ul.quicktabs_tabs.quicktabs-style-dark li{
+  padding:2px 5px;
+  margin:0;
+  position:relative;
+}
+ul.quicktabs_tabs.quicktabs-style-dark li:hover{
+}
+ul.quicktabs_tabs.quicktabs-style-dark li.active{
+  background-color:#fff;
+}
+ul.quicktabs_tabs.quicktabs-style-dark li.active a{
+  color:#111;
+}

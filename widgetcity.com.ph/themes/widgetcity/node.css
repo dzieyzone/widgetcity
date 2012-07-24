@@ -1,0 +1,56 @@
+#slideshow-container{
+width:370px;
+float:left;
+}
+
+#nav-container {
+width:70px;
+float:left;
+}
+
+.content #product-cart {
+float:left;
+width:195px;
+}
+
+#product-images #slideshow {margin:auto;text-align:center;}
+
+#product-images #image-nav{ padding:0; }
+
+#product-images #image-nav li { width: 50px; float: left; margin: 0 0 1px 1px; list-style: none }
+
+#product-images #image-nav a { width: 50px; padding: 2px; display: block; border: 1px solid #ccc; }
+
+#product-images #image-nav a.activeSlide { background: #88f }
+
+#product-images #image-nav a:focus { outline: none; }
+
+#product-images #image-nav img { border: none; display: block }
+
+#product-images,
+.product-body,
+#product-tabs {
+padding-bottom:5px;
+}
+#slideshow-container {
+border: 1px solid #cccccc;
+}
+
+.product-info .uc-price-product {
+color:green;
+width:auto;
+font-size:24px;
+}
+
+.add-to-cart input.form-submit {
+background:url(/sites/widgetcity.com.ph/themes/widgetcity/images/buy-now.gif) no-repeat 0 0;
+width:180px;
+height:41px;
+cursor: pointer;
+cursor: hand;
+border:none;
+padding:0;
+font-size:0;
+overflow:hidden;
+text-index:-999px;
+}

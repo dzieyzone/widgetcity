@@ -1,0 +1,19 @@
+#slideshow-container{
+width:370px;
+float:left;
+}
+#nav-container {
+width:80px;
+float:left;
+}
+.content .add-to-cart {
+float:left;
+width:185px;
+}
+#product-images #slideshow {margin:auto;text-align:center;}
+#product-images #image-nav{ padding:0; }
+#product-images #image-nav li { width: 50px; float: left; margin: 2px; list-style: none }
+#product-images #image-nav a { width: 50px; padding: 3px; display: block; border: 1px solid #ccc; }
+#product-images #image-nav a.activeSlide { background: #88f }
+#product-images #image-nav a:focus { outline: none; }
+#product-images #image-nav img { border: none; display: block }

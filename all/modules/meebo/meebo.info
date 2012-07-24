@@ -1,0 +1,11 @@
+; $Id $
+name = Meebo
+description = Meebo lets users share and communicate with friends via the Meebo Bar at the bottom of the page of your site.
+core = 6.x
+php = 5.0
+; Information added by drupal.org packaging script on 2010-01-18
+version = "6.x-1.1"
+core = "6.x"
+project = "meebo"
+datestamp = "1263826208"
+

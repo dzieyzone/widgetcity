@@ -1,0 +1,10 @@
+name = PesoPay Payment Gateway
+description = Process payments using PesoPay.
+dependencies[] = uc_payment
+package = Ubercart - payment
+core = 6.x
+php = 5.0
+
+version = "6.x-1.0"
+core = "6.x"
+project = "uc_pesopay"

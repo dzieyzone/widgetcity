@@ -1,0 +1,166 @@
+<?php
+/**
+ * @file
+ * Handles installing, uninstalling, and updating PesoPay settings.
+ */
+
+/**
+ * Implementation of hook_schema().
+ */
+function uc_pesopay_schema() {
+  $schema = array();
+
+  $schema['uc_pesopay_datafeed'] = array(
+    'description' => t('Logs PesoPay Instant Payment Notifications.'),
+    'fields' => array(
+      'fid' => array(
+        'description' => t('Auto-generated datafeed id'),
+        'type' => 'serial',
+        'size' => 'normal',
+        'unsigned' => 'TRUE',
+        'not null' => 'TRUE',
+      ),
+      'src' => array(
+        'description' => t('Return bank host status code (secondary)'),
+        'type' => 'int',
+        'unsigned' => 'TRUE',
+        'not null' => 'TRUE',
+        'default' => 0,
+      ),
+      'prc' => array(
+        'description' => t('Return bank host status code (primary)'),
+        'type' => 'int',
+        'unsigned' => 'TRUE',
+        'not null' => 'TRUE',
+        'default' => 0,
+      ),
+      'ord' => array(
+        'description' => t('Bank Reference - Order id'),
+        'type' => 'int',
+        'size' => 'big',
+        'unsigned' => 'TRUE',
+        'not null' => 'TRUE',
+        'default' => 0,
+      ),
+      'holder' => array(
+        'description' => t('The Holder Name of the Payment Account'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => 'TRUE',
+        'default' => '',
+      ),
+      'successcode' => array(
+        'description' => t('0 - succeeded, 1 - failure, Others - error'),
+        'type' => 'int',
+        'unsigned' => 'TRUE',
+        'not null' => 'TRUE',
+        'default' => 0,
+      ),
+      'ref' => array(
+        'description' => t('Merchants Order Reference Number'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => 'TRUE',
+        'default' => '',
+      ),
+      'payref' => array(
+        'description' => t('PesoPay Payment Reference Number'),
+        'type' => 'int',
+        'unsigned' => 'TRUE',
+        'not null' => 'TRUE',
+        'default' => 0,
+      ),
+      'amt' => array(
+        'description' => t('Transaction Amount'),
+        'type' => 'float',
+        'unsigned' => 'TRUE',
+        'not null' => 'TRUE',
+        'default' => 0.0,
+      ),
+      'cur' => array(
+        'description' => t('Transaction Currency'),
+        'type' => 'char',
+        'length' => '3',
+        'not null' => 'TRUE',
+        'default' => '',
+      ),
+      'remark' => array(
+        'description' => t('A remark field for you to store additional data that will not show on the transaction web page'),
+        'type' => 'varchar',
+        'length' => '200',
+        'not null' => 'TRUE',
+        'default' => '',
+      ),
+      'authid' => array(
+        'description' => t('Approval Code'),
+        'type' => 'varchar',
+        'length' => '100',
+        'not null' => 'TRUE',
+        'default' => '',
+      ),
+      'eci' => array(
+        'description' => t('ECI value (for 3D enabled Merchants)'),
+        'type' => 'varchar',
+        'length' => '5',
+        'not null' => 'TRUE',
+        'default' => '',
+      ),
+      'payerauth' => array(
+        'description' => t('Payer Authentication Status'),
+        'type' => 'varchar',
+        'length' => '5',
+        'not null' => 'TRUE',
+        'default' => '',
+      ),
+      'sourceip' => array(
+        'description' => t('IP address of payer'),
+        'type' => 'varchar',
+        'length' => '15',
+        'not null' => 'TRUE',
+        'default' => '',
+      ),
+      'ipcountry' => array(
+        'description' => t('Country of payer ( e.g. PHP)'),
+        'type' => 'varchar',
+        'length' => '3',
+        'not null' => 'TRUE',
+        'default' => '',
+      ),
+      'cdatetime' => array(
+        'desciption' => t('Timestamp of Created datetime'),
+        'type' => 'int',
+        'not null' => 'TRUE',
+        'default' => 0,
+      ),
+      'mdatetime' => array(
+        'desciption' => t('Timestamp of Last Modified datetime'),
+        'type' => 'int',
+        'not null' => 'TRUE',
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('fid'),
+    'indexes' => array(
+      'ipcountry' => array('ipcountry'),
+      'src_prc' => array('src', 'prc'),
+    ),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function uc_pesopay_install() {
+  drupal_install_schema('uc_pesopay');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function uc_pesopay_uninstall() {
+  // Delete related variables all at once.
+  drupal_uninstall_schema('uc_pesopay');
+  db_query("DELETE FROM {variable} WHERE name LIKE 'uc_pesopay_%%'");
+}

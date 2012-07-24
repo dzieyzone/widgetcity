@@ -1,0 +1,12 @@
+/* $Id: uc_checkout_tweaks.css,v 1.1 2010/10/24 19:09:17 longwave Exp $ */
+
+.address-pane-table table.saved-addresses {
+  margin-top: 1em;
+}
+
+.address-pane-table table.saved-addresses td {
+  width: 30%;
+  vertical-align: top;
+  padding-bottom: 1em;
+  padding-right: 0.5em;
+}

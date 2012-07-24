@@ -1,0 +1,224 @@
+<?php
+define('ASIAPAY_PC_DEMO', 'https://test.asiapay.com/b2c2/eng/dPayment/payComp.jsp');
+define('ASIAPAY_PC_LIVE', 'https://www.asiapay.com/b2c2/eng/dPayment/payComp.jsp');
+                       
+//define('ASIAPAY_DEMO', 'https://test.asiapay.com/b2cDemo/eng/payment/payForm.jsp');
+define('ASIAPAY_DEMO', 'https://test.asiapay.com/b2c2/eng/payment/payForm.jsp');
+define('ASIAPAY_LIVE', 'https://www.asiapay.com/b2c2/eng/payment/payForm.jsp');
+/**
+ * @file
+ * Process payments using AsiaPay PayGate.
+ */
+
+/**
+ * Implementation of hook_menu().
+ */
+function uc_asiapay_menu() {
+  $items = array();
+
+  $items['asiapay/success'] = array(
+    'title' => 'Order complete',
+    'page callback' => 'uc_asiapay_success',
+    'access callback' => 'uc_asiapay_access',
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_asiapay.pages.inc',
+  );
+  $items['asiapay/fail'] = array(
+    'title' => 'Order complete',
+    'page callback' => 'uc_asiapay_fail',
+    'access callback' => 'uc_asiapay_access',
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_asiapay.pages.inc',
+  );
+  $items['asiapay/cancel'] = array(
+    'title' => 'Order complete',
+    'page callback' => 'uc_asiapay_cancel',
+    'access callback' => 'uc_asiapay_access',
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_asiapay.pages.inc',
+  );
+  // The main handler for complete transaction.
+  $items['asiapay/datafeed'] = array(
+    'title' => 'Order complete',
+    'page callback' => 'uc_asiapay_datafeed',
+    'access callback' => 'uc_asiapay_access',
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_asiapay.pages.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Make sure anyone can complete their AsiaPay PayGate orders.
+ * Full access
+ */
+function uc_asiapay_access() {
+  return TRUE;
+}
+
+/**
+ * Implementation of hook_init().
+ */
+function uc_asiapay_init() {
+  global $conf;
+  $conf['i18n_variables'][] = 'uc_asiapay_checkout_button';
+}
+
+/**
+ * Implementation of hook_form_alter().
+ */
+function uc_asiapay_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'uc_cart_checkout_review_form' && ($order_id = intval($_SESSION['cart_order'])) > 0) {
+    $order = uc_order_load($order_id);
+
+    if ($order->payment_method == 'asiapay') {
+      unset($form['submit']);
+      $form['#prefix'] = '<table id="two-checkout-review-table"><tr><td>';
+      $form['#suffix'] = '</td><td>'. drupal_get_form('uc_asiapay_form', $order) .'</td></tr></table>';
+    }
+  }
+}
+
+/**
+ * Implementation of hook_payment_method().
+ */
+function uc_asiapay_payment_method() {
+  $gateways[] = array(
+    'id' => 'asiapay',
+    'name' => t('AsiaPay PayGate'),
+    'title' => t('AsiaPay PayGate - provides secure, multi-channel, multi-lingual and multi-currency payment services.'),
+    'review' => t('AsiaPay Client Post'),
+    'desc' => t('Process credit card or PayPal payments using AsiaPay PayGate.'),
+    'callback' => 'uc_payment_method_asiapay',
+    'weight' => 1,
+    'checkout' => FALSE,
+    'no_gateway' => TRUE,
+  );
+
+  return $gateways;
+}
+
+/**
+ * Callback for payment gateway settings.
+ */
+function uc_payment_method_asiapay($op, &$arg1) {
+  switch ($op) {
+    case 'order-view':
+      $payref = db_result(db_query("SELECT payref FROM {uc_asiapay_datafeed} WHERE ref = %d ORDER BY cdatetime ASC", $arg1->order_id));
+      if (empty($payref)) {
+        $payref = t('Unknown');
+      }
+      return t('AsiaPay Payment Reference Number:<br />@payref', array('@payref' => $payref));
+
+    case 'settings':
+      $form['asiapay']['uc_asiapay_id'] = array(
+        '#type' => 'textfield',
+        '#title' => t('AsiaPay ID'),
+        '#description' => t('The merchant id used for the AsiaPay service.'),
+        '#default_value' => variable_get('uc_asiapay_id', '1'),
+      );
+      $form['asiapay']['uc_asiapay_paytype'] = array(
+        '#type' => 'select',
+        '#title' => t('AsiaPay Payment Type'),
+        '#description' => t('Choose type of payment'),
+        '#options' => array(
+				  'ALL' => t('All the available payment method'),
+					'CC'  => t('Credit Card Payment'),
+					'PPS' => t('AsiaPay PPS Payment'),
+					'PAYPAL' => t('PayPal By AsiaPay Payment'),
+					'CUP' => t('AsiaPay CUP Payment'),
+					'GCash' => t('Globe GCash Mobile Payment'),
+					'BancNet' => t('BancNet Debit Card Payment'),
+        ),
+        '#default_value' => variable_get('uc_asiapay_paytype', 'ALL'),
+      );
+      $form['asiapay']['uc_asiapay_handler'] = array(
+        '#type' => 'select',
+        '#title' => t('AsiaPay server'),
+        '#description' => t('Sign up for and use a Sandbox account for testing.'),
+        '#options' => array(
+          ASIAPAY_DEMO => t('Sandbox'),
+          ASIAPAY_LIVE => t('Live'),
+        ),
+        '#default_value' => variable_get('uc_asiapay_handler', ASIAPAY_DEMO),
+      );
+      $form['asiapay']['uc_asiapay_currency'] = array(
+        '#type' => 'select',
+        '#title' => t('Currency code'),
+        '#description' => t('Transactions can only be processed in one of the listed currencies.'),
+        '#options' => array(
+				  '608' => 'PHP',
+          '344' => 'HKD',
+          '840' => 'USD',
+          '702' => 'SGD',
+          '156' => 'CNY',
+          '392' => 'JPY',
+          '901' => 'TWD',
+          '036' => 'AUD',
+          '978' => 'EUR',
+          '826' => 'GBP',
+          '124' => 'CAD',
+        ),
+        '#default_value' => variable_get('uc_asiapay_currency', '608'),
+      );
+      $form['asiapay']['uc_asiapay_language'] = array(
+        '#type' => 'select',
+        '#title' => t('Language'),
+        '#description' => t('Please choose the language page.'),
+        '#options' => array(
+          'E' => t('English'),
+          'C' => t('Traditional Chinese'),
+          'X' => t('Simplified Chinese'),
+          'K' => t('Korean'),
+          'J' => t('Japanese'),
+        ),
+        '#default_value' => variable_get('uc_asiapay_language', 'E'),
+      );
+      $form['asiapay']['uc_asiapay_checkout_button'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Order review submit button text'),
+        '#description' => t('Provide AsiaPay PayGate specific text for the submit button on the order review page.'),
+        '#default_value' => variable_get('uc_2checkout_checkout_button', t('Submit Order')),
+      );
+
+      return $form;
+  }
+}
+
+/**
+ * Form to build the submission to AsiaPay.com in HTML hidden form.
+ */
+function uc_asiapay_form($form_state, $order) {
+  $data = array(
+	  'orderRef' => $order->order_id,
+    'amount' => $order->order_total,
+    'currCode' => variable_get('uc_asiapay_currency', '344'),
+    'lang' => variable_get('uc_asiapay_language', 'E'),
+    'cancelUrl' => url('asiapay/cancel/'. $order->order_id, array('absolute' => TRUE) ),
+    'failUrl' => url('asiapay/fail/'. $order->order_id, array('absolute' => TRUE) ),
+    'successUrl' => url('asiapay/success/'. $order->order_id, array('absolute' => TRUE) ),
+    'merchantId' => variable_get('uc_asiapay_id', '1'),
+    'payType' => 'N',
+		'payMethod' => variable_get('uc_asiapay_paytype','ALL'),
+//    'actionUrl' => variable_get('uc_asiapay_handler', ASIAPAY_DEMO),	
+//    'code' => 'asiapay',
+//    'orderId' => $order->order_id,
+    'remark' => uc_cart_get_id(),
+  );
+
+  $form['#action'] = variable_get('uc_asiapay_handler', ASIAPAY_DEMO);
+
+  foreach ($data as $name => $value) {
+    if (!empty($value)) {
+      $form[$name] = array('#type' => 'hidden', '#value' => $value);
+    }
+  }
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => variable_get('uc_asiapay_checkout_button', t('Submit Order')),
+  );
+
+  return $form;
+}

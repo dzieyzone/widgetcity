@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<dwsync>
+<file name="nodequeue.views.inc" server="67.222.34.119" local="129610275000000000" remote="129718530000000000" />
+<file name="nodequeue.views_default.inc" server="67.222.34.119" local="129610275000000000" remote="129718530000000000" />
+<file name="nodequeue_handler_argument_subqueue_qid.inc" server="67.222.34.119" local="129610275000000000" remote="129718530000000000" />
+<file name="nodequeue_handler_field_all_queues.inc" server="67.222.34.119" local="129610275000000000" remote="129718530000000000" />
+<file name="nodequeue_handler_field_all_subqueues.inc" server="67.222.34.119" local="129610275000000000" remote="129718530000000000" />
+<file name="nodequeue_handler_field_links.inc" server="67.222.34.119" local="129610275000000000" remote="129718530000000000" />
+<file name="nodequeue_handler_field_queue_tab.inc" server="67.222.34.119" local="129610275000000000" remote="129718530000000000" />
+<file name="nodequeue_handler_filter_in_queue.inc" server="67.222.34.119" local="129610275000000000" remote="129718530000000000" />
+<file name="nodequeue_handler_relationship_nodequeue.inc" server="67.222.34.119" local="129610275000000000" remote="129718530000000000" />
+<file name="nodequeue_handler_relationship_nodequeue_queue_name.inc" server="67.222.34.119" local="129610275000000000" remote="129718530000000000" />
+</dwsync>

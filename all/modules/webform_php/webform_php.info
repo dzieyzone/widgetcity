@@ -1,0 +1,13 @@
+; $Id: webform_php.info,v 1.1 2010/03/27 04:29:44 quicksketch Exp $
+name = Webform PHP
+description = Allows the execution of PHP code when submitting or validating webform submissions.
+core = 6.x
+package = Webform
+dependencies[] = webform
+
+; Information added by drupal.org packaging script on 2010-10-18
+version = "6.x-3.x-dev"
+core = "6.x"
+project = "webform_php"
+datestamp = "1287361531"
+

@@ -1,0 +1,15 @@
+; $Id: themekey_properties.info,v 1.3.2.1 2009/12/17 00:02:01 mkalkbrenner Exp $
+
+name = "ThemeKey Properties"
+description = "Provides additional properties for ThemeKey"
+core = 6.x
+dependencies[] = themekey
+package = ThemeKey
+
+
+; Information added by drupal.org packaging script on 2010-08-20
+version = "6.x-2.3"
+core = "6.x"
+project = "themekey_properties"
+datestamp = "1282296093"
+

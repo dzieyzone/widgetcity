@@ -1,0 +1,115 @@
+.view-display-id-page {
+}
+.view-display-id-page .item-list ul {
+}
+.product-item-list .block-inner .content {
+	background:#FFFFFF;
+}
+.view-uc-products .item-list {
+	clear:left;
+}
+.view-uc-products .item-list ul.pager li, 
+#upsell-block-0 .upsell-block-product, 
+.product-item-list .item-list ul.pager li, 
+.view-taxonomy-term .item-list ul.pager li,
+.view-display-id-page .item-list ul.pager li {
+	border:none;
+	width:auto;
+}
+.view-uc-products .item-list ul li,  
+#upsell-block-0 .upsell-block-product, 
+.product-item-list .item-list ul li, 
+.view-taxonomy-term .item-list ul li, 
+.view-display-id-page .item-list ul li {
+	margin:0;
+	list-style:none;
+	float:left;
+	width:145px;
+	text-align:center;
+	margin: 0 2px 10px 2px;
+	border:1px solid #cccccc;
+	padding-bottom:5px;
+}
+#upsell-block-0 .upsell-block-product a {
+	display:block;
+}
+.view-uc-products .views-field-field-product-image-fid,
+#upsell-block-0 .upsell-block-product a, 
+.product-item-list .views-field-field-product-image-fid, 
+.view-taxonomy-term .views-field-field-product-image-fid, 
+.view-display-id-page .views-field-field-product-image-fid {
+	height:130px;
+}
+#upsell-block-0 .upsell-block-product-title a,
+#upsell-block-0 .upsell-block-product-title,
+.view-uc-products .views-field-title, 
+.product-item-list .views-field-title,
+.view-taxonomy-term .views-field-title,
+.view-display-id-page .views-field-title {
+	height:40px;
+}
+.view-uc-products .views-field-title .field-content a, 
+.upsell-block-product-title a,
+.product-item-list .views-field-title .field-content a,
+.view-taxonomy-term .views-field-title .field-content a, 
+.view-display-id-page .views-field-title .field-content a {
+	font-weight:bold;
+	color:#081877;
+}
+.view-uc-products .uc-price-sell_price,
+.product-item-list .views-field-sell-price,
+.view-taxonomy-term .views-field-sell-price,
+.view-display-id-page .views-field-sell-price {
+	padding:3px;
+	margin:5px 0;
+}
+.upsell-block-product .uc-price-product,
+.view-uc-products .uc-price-sell_price .field-content, 
+.view-taxonomy-term .views-sell_price .field-content, 
+.product-item-list .views-field-sell-price .field-content, 
+.view-display-id-page .views-field-sell-price .field-content {
+	color:green;
+	font-weight:bold;
+	font-size:18px;
+}
+.product-item-list .views-field-nid, 
+.view-uc-products .views-field-buyitnowbutton,
+.product-item-list .views-field-buyitnowbutton, 
+.view-display-id-page .views-field-nid, 
+.view-taxonomy-term .views-field-buyitnowbutton, 
+.view-display-id-page .views-field-buyitnowbutton {
+	width:66px;
+	float:left;
+	padding:0 2px;
+}
+.view-uc-products .views-field-nid .field-content a, 
+.product-item-list .views-field-nid .field-content a, 
+.view-taxonomy-term .views-field-nid .field-content a, 
+.view-display-id-page .views-field-nid .field-content a {
+	display:block;
+	line-height:230%;
+}
+.view-uc-products .views-field-buyitnowbutton .list-add-to-cart,
+.upsell-block-product .list-add-to-cart, 
+.product-item-list .views-field-nid .field-content a,  
+.product-item-list .views-field-buyitnowbutton .list-add-to-cart,
+.view-taxonomy-term .views-field-buytitnowbutton .list-add-to-cart, 
+.view-display-id-page .views-field-nid .field-content a, 
+.view-display-id-page .views-field-buyitnowbutton .list-add-to-cart {
+	background:url(/sites/widgetcity.com.ph/themes/widgetcity/images/blue-button.png) no-repeat 0 0;
+	height: 25px;
+	width:65px;
+	border:0;
+	padding:0 3px;
+	color:#FFFFFF;
+	cursor:pointer;
+	cursor:hand;
+	font-size:11px;
+	font-weight:bold;
+}
+.view-display-id-page .views-field-nid {
+}
+
+#block-views-banner_rotator-block_1 {
+	padding-bottom:10px;
+}

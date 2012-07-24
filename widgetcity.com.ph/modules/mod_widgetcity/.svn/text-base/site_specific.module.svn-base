@@ -1,0 +1,1445 @@
+<?php
+// $Id: site_specific.module,v 1.43.2.7 2008/09/09 14:39:01 sun Exp $
+require_once drupal_get_path('module', 'site_specific') .'/site_specific.inc';
+
+
+function site_specific_menu() {
+  $items = array();
+
+  $items['action'] = array(
+    'page callback' => 'site_specific_action',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['products'] = array(
+    'page callback' => 'site_specific_products_landing',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
+
+  $items['podium/add-sign'] = array(
+    'page callback' => 'site_specific_podium_add_sign',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['podium/add-wrap'] = array(
+    'page callback' => 'site_specific_podium_add_wrap',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['cars'] = array(
+    'page callback' => 'site_specific_cars',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+function backtrace($ignore_admin = 0, $skip_depth = 0) {
+  if ($ignore_admin || user_access('access devel information')) {
+    $backtrace = debug_backtrace();
+    $file = @$backtrace[0 + $skip_depth]['file'];
+    $line = @$backtrace[0 + $skip_depth]['line'];
+    $func = @$backtrace[1 + $skip_depth]['function'];
+
+    print('<fieldset style="width:97%"><legend style="font-size:10px">backtrace from file=['. $file .'], function=['. $func .'], line=['. $line .']</legend>');
+    echo '<div style="padding:20px">';
+    for ($i=1 + $skip_depth; $i<count($backtrace); $i++) {
+      echo '<b>'. @$backtrace[$i]['function'] .'()</b> on line <b>'. @$backtrace[$i-1]['line'] .'</b>, '. @$backtrace[$i-1]['file'] .'<br />';
+    }
+
+    print('</div></fieldset>');
+  }
+}
+
+
+/**
+ * Implementation of hook_block().
+ */
+function site_specific_block($op = 'list', $delta = 0, $edit = array()) {
+  if ($op == 'list') {
+    $blocks[1]['info'] = t('Utility Block');
+    $blocks[1]['cache'] = BLOCK_NO_CACHE;
+
+    $blocks[2]['info'] = t('Left Product Menu');
+    $blocks[2]['cache'] = BLOCK_CACHE_GLOBAL;
+
+    $blocks[3]['info'] = t('Homepage Features');
+    $blocks[3]['cache'] = BLOCK_NO_CACHE;
+
+    $blocks['exotic_cars']['info'] = t('Left Exotic Cars Menu');
+    $blocks['exotic_cars']['cache'] = BLOCK_CACHE_GLOBAL;
+
+    $blocks['valet_regions']['info'] = t('Valet Provider Regions Menu');
+    $blocks['valet_regions']['cache'] = BLOCK_CACHE_GLOBAL;
+
+    $blocks['footer']['info'] = t('Footer Array');
+    $blocks['footer']['cache'] = BLOCK_NO_CACHE;
+
+    return $blocks;
+  }
+  elseif ($op == 'view') {
+    if ($delta == 1) {
+      $block['subject'] = "";
+      $block['content'] = _site_specific_block_utility();
+    }
+    elseif ($delta == 2) {
+      $block['subject'] = "";
+      $block['content'] = _site_specific_block_left_product_menu();
+    }
+    elseif ($delta == 3) {
+      $block['subject'] = "";
+      $block['content'] = _site_specific_block_homepage_features();
+    }
+    elseif ($delta == 'footer') {
+      $block['subject'] = "";
+      $block['content'] = site_specific_footer_array();
+    }
+    elseif ($delta == 'exotic_cars') {
+      $block['subject'] = "";
+      $block['content'] = _site_specific_block_left_cars_menu();
+    }
+    elseif ($delta == 'valet_regions') {
+      $block['subject'] = "";
+      $block['content'] = _site_specific_block_left_valet_regions_menu();
+    }
+    return $block;
+  }
+}
+
+
+function _site_specific_block_utility() {
+  global $user;
+
+  $links = array();
+
+  if ($user->uid) {
+    if ($user->firstname) {
+      $name = $user->firstname;
+    }
+    else {
+      $name = $user->name;
+    }
+
+    $links['utility-user'] = 'Welcome, '. l($name, 'user') . ' ('.l('logout','logout',array('class'=>'user-logout')).')';
+
+  }
+  else {
+    $links['utility-login'] = l("Log In", "user/login", array('destination' => drupal_get_destination()));
+  }
+
+  // Membership related tasks
+  $cart = module_invoke('uc_cart', 'get_contents');
+  $cart_count = (is_array($cart)) ? count($cart) : 0;
+  $links['utility-cart'] = l("Cart ({$cart_count})", "cart");
+
+  return site_specific_utility_links($links);
+}
+
+function site_specific_utility_links($links) {
+  $i         = 1;
+  $num_links = count($links);
+
+  $output    = '<ul class="utility-links clear-block">';
+  foreach ($links as $key => $link) {
+    $extra_class = ($i==1) ? 'first ' : (($i==$num_links) ? 'last ' : ' ');
+    $output     .= '<li class="'. $extra_class . $key .'"><div class="utility-link-inner">'. $link .'</div></li>';
+    $i++;
+  }
+  $output .= '</ul>';
+
+  return $output;
+}
+
+
+function _site_specific_block_left_product_menu() {
+  $menu = menu_tree_output(menu_tree_all_data('menu-left-menu'));
+  return $menu;
+}
+
+function _site_specific_block_left_cars_menu() {
+
+  $output = '<ul class="menu"><li class="expanded first last"><a href="/exotic-car-guide">Exotic Car Guide</a>';
+  $output .= '<ul class="menu">';
+
+
+  $res = db_query("SELECT * FROM {node} WHERE type='exotic_car' AND status=1 ORDER BY title");
+  $num = mysql_num_rows($res);
+  $i = 1;
+  while ($item = db_fetch_object($res)) {
+    $class = 'leaf';
+    if ($i == 1) {
+      $class .= ' first';
+    }
+    if ($i == $num) {
+      $class .= ' last';
+    }
+
+    $link = l($item->title, "node/{$item->nid}");
+    $output .= '<li class="'. $class .'">'. $link .'</li>';
+    $i++;
+  }
+
+  $output .= '</ul></li></ul>';
+
+  return $output;
+}
+
+function _site_specific_block_left_valet_regions_menu() {
+
+  $output = '<ul class="menu"><li class="expanded first last"><a href="/Directory-of-Qualified-Valet-Service-Providers.html">Valet Provider Regions</a>';
+  $output .= '<ul class="menu">';
+
+
+  $res = db_query("SELECT * FROM {term_data} WHERE vid=5 ORDER BY name");
+  $num = mysql_num_rows($res);
+  $i = 1;
+  while ($item = db_fetch_object($res)) {
+    $class = 'leaf';
+    if ($i == 1) {
+      $class .= ' first';
+    }
+    if ($i == $num) {
+      $class .= ' last';
+    }
+
+    $link = l($item->name, "taxonomy/term/{$item->tid}");
+    $output .= '<li class="'. $class .'">'. $link .'</li>';
+    $i++;
+  }
+
+  $output .= '</ul></li></ul>';
+
+  return $output;
+}
+
+
+function _site_specific_block_homepage_features() {
+  drupal_add_js('misc/jquery.cycle.all.min.js');
+  //drupal_add_js('misc/jquery.cycle.js');
+  //drupal_add_js('misc/jquery.cycle.trans.js');
+  drupal_add_js('misc/global.js');
+
+
+  $output = <<<OUTPUT
+  <div class="tvs-feature-rotation">
+    <div class="tvs-features">
+      <a href="/products/valet-podiums"><img src="/sites/default/files/feature-podiums.jpg" border="0" /></a>
+      <a href="/products/key-boxes"><img src="/sites/default/files/feature-keyboxes.jpg" border="0" /></a>
+      <a href="/products/accessories"><img src="/sites/default/files/feature-accessories.jpg" border="0" /></a>
+      <a href="/products/valet-tickets"><img src="/sites/default/files/feature-valet-tickets.jpg" border="0" /></a>
+    </div>
+  </div>
+OUTPUT;
+  return $output;
+}
+
+function _quote_html($quote, $who, $company) {
+  return '<div class="client-quote"><div class="quote">"'. $quote .'"</div><div class="who">'. $who .'</div><div class="company">'. $company .'</div></div>';
+}
+function site_specific_footer_array() {
+  $footer = '';
+
+  drupal_add_js('misc/jquery.cycle.all.min.js');
+  //drupal_add_js('misc/jquery.cycle.js');
+  //drupal_add_js('misc/jquery.cycle.trans.js');
+  drupal_add_js('misc/global.js');
+
+  // PRODUCTS AND PRODUCT CATEGORIES
+  $valet_podiums = _site_specific_get_term_nav_list(taxonomy_get_term(1), TRUE);
+  $key_boxes     = _site_specific_get_term_nav_list(taxonomy_get_term(2));
+  $parking_equip = _site_specific_get_term_nav_list(taxonomy_get_term(5));
+  $valet_tickets = _site_specific_get_term_nav_list(taxonomy_get_term(4));
+  $accessories   = _site_specific_get_term_nav_list(taxonomy_get_term(3));
+  $replacements  = _site_specific_get_term_nav_list(taxonomy_get_term(6));
+  $product_list  = $valet_podiums . $key_boxes . $parking_equip . $valet_tickets . $accessories . $replacements;
+
+
+  // PRODUCT TOURS
+  $product_tours = '<h2 class="title">Video Tours of our Products</h2><img src="/sites/default/files/our-product-tours.jpg" />';
+
+  // NEWSLETTER
+  $link = l('Sign Up For Our Newsletter', 'valet-spot-newsletter.html');
+  $newsletter = '<div class="section-newsletter"><h2 class="title">'. $link .'</h2><div class="newsletter-signup-desc">' . variable_get('newsletter_signup_desc_footer', "And we'll share some of our best deals to qualified equipment buyers.") .'</div></div>';
+
+  // RECENT BLOGS
+  $link = l('Recent Blog Posts', 'blog');
+  $recent_blogs = '<div class="section-blogs"><h2 class="title">'. $link .'</h2><div class="recent-blogs">' . site_specific_recent_blogs() .'</div></div>';
+
+  // ALSO BY TVS
+  $links = array(
+    array('title' => 'How to Drive Exotic Cars', 'href' => 'ExoticCarGuide.html'),
+    array('title' => 'Directory of Qualified Valet Parking Providers', 'href' => 'Directory-of-Qualified-Valet-Service-Providers.html'),
+  );
+  $also_by_tvs = '<div class="section-also-by"><h2 class="title">Also by The Valet Spot</h2><div class="also-by footer-column-content">' . theme('links', $links, array()) .'</div></div>';
+
+  //CLIENTs
+  $quote1 = _quote_html('Hope all is good in CA, we love the key stand... your products are the best I have come across.', 'Ryan B.', 'Tri-State Valet and Parking Service');
+  $quote2 = _quote_html('...We love the podium.', 'Ellis D.', 'Advanced Parking Concepts');
+  $quote3 = _quote_html('The stainless steel podium is great, we love it!', 'Janice', 'Yuki Sharoni');
+  $quote4 = _quote_html('[The Classic Podium] is awesome! The quality of your materials is fantastic!', 'John', 'ABC Parking');
+
+
+  $clients = <<<OUTPUT
+  <div class="our-clients"><div class="client-rotation-wrapper"><h2 class="title">Our Clients</h2><div class="client-rotation">
+      $quote1
+      <img src="/sites/default/files/imagecache/client-logo/clients/fastpark.jpg" border="0" />
+      $quote2
+      <img src="/sites/default/files/imagecache/client-logo/clients/hyatt.jpg" border="0" />
+      $quote3
+      <img src="/sites/default/files/imagecache/client-logo/clients/sodexo.jpg" border="0" />
+      $quote4
+      <img src="/sites/default/files/imagecache/client-logo/clients/central-parking.jpg" border="0" />
+      <img src="/sites/default/files/imagecache/client-logo/clients/avis_budget.jpg" border="0" />
+
+  </div></div></div>
+OUTPUT;
+
+  // SECURE SHOPPING
+  $secure_shopping = '<div class="secure-shopping"><img src="/sites/default/files/secure-shopping.jpg" /></div>';
+
+  // NVPA MEMBER
+  $nvpa_memb       = '<div class="nvpa-member"><img src="/sites/default/files/nvpa-member.jpg" /></div>';
+
+
+  // PRODUCTS BY Term
+  $columns = array();
+  $columns[] = $newsletter . $recent_blogs . $also_by_tvs;
+  $columns[] = $product_tours;
+  $columns[] = $clients . $nvpa_memb;
+
+
+  // GLUE THEM ALL TOGETHER
+  $i = 1;
+  $count = count($columns);
+  $column_output = '';
+  foreach ($columns as $column) {
+    $class_extra = 'footer-column-'. $i;
+    $class_extra .= ($i == 1) ? ' first' : '';
+    $class_extra .= ($i == $count) ? ' last' : '';
+    $column_output .= '<div class="footer-column '. $class_extra .'">'. $column .'</div>';
+    $i++;
+  }
+
+  $footer .= '<div id="footer-column-wrapper" class="clear-block">'. $column_output .'</div>';
+
+
+
+  // REGULAR NAV, ADDRESS/PHONE, COPYRIGHT
+  $tree = menu_tree_page_data('menu-footer-extra-nav');
+  $output = '<h3 class="title tvs-footer-header">'. l('The Valet Spot', "<front>") .'</h3><ul class="tvs-footer-nav">';
+  $i = 1;
+  $count = count($tree);
+  foreach ($tree as $key => $item) {
+    if (!(isset($item['link']['hidden']) && $item['link']['hidden'])) {
+      $class = '';
+      $class .= ($i == 1) ? 'first ' : '';
+      $class .= ($i == $count) ? 'last ' : '';
+      $output .= '<li class="'. $class .'">'. l($item['link']['link_title'], $item['link']['link_path']) .'</li>';
+      $i++;
+    }
+  }
+  $output .= '</ul>';
+  $footer_message = variable_get('site_footer', '');
+
+  $footer .= <<<FOOTER
+    <div class="tvs-footer-content clear-block">
+      <div class="tvs-footer-menu">{$output}</div>
+      <div id="footer-message">{$footer_message}</div>
+  </div>
+FOOTER;
+
+
+
+  return $footer;
+}
+
+function _site_specific_get_term_nav_list($term, $add_terms=FALSE) {
+  $class_extra = ($add_terms) ? 'with-terms' : 'without-terms';
+
+  $output = '<h3 class="title '. $class_extra .'">'. l($term->name, "taxonomy/term/{$term->tid}") .'</h3>';
+
+  if ($add_terms) {
+    $output .= '<ul>';
+    $res = taxonomy_select_nodes(array($term->tid), 'or', 0, FALSE, 'n.sticky DESC, n.created DESC');
+    while ($item = db_fetch_object($res)) {
+      $output .= '<li>'. l($item->title, "node/{$item->nid}") .'</li>';
+    }
+    $output .= '</ul>';
+  }
+  return $output;
+}
+
+
+function _site_specific_make_term_link($term) {
+  $path = _site_specific_get_term_path($term->tid);
+  return l($term->name, $path);
+}
+
+function _site_specific_get_term_path($tid, $refresh = FALSE) {
+  static $term_paths = array();
+
+  if (!isset($term_paths[$tid]) || $refresh) {
+    $term_paths[$tid] = db_result(db_query("SELECT dst FROM {url_alias} WHERE src='taxonomy/term/%d'", $tid));
+  }
+  return $term_paths[$tid];
+}
+function _site_specific_links_list($links, $attributes = array('class' => 'links'), $sep=', ') {
+  global $language;
+  $output = '';
+
+  $list = array();
+  if (count($links) > 0) {
+    $num_links = count($links);
+    $i = 1;
+
+    foreach ($links as $key => $info) {
+      $class = $key;
+      $link  = $info['link'];
+
+      // Add first, last and active classes to the list of links to help out themers.
+      if ($i == 1) {
+        $class .= ' first';
+      }
+      if ($i == $num_links) {
+        $class .= ' last';
+      }
+      if (isset($link['href']) && ($link['href'] == $_GET['q'] || ($link['href'] == '<front>' && drupal_is_front_page()))
+          && (empty($link['language']) || $link['language']->language == $language->language)) {
+        $class .= ' active';
+      }
+
+      $html_link = '';
+      if (isset($link['href'])) {
+        // Pass in $link as $options, they share the same keys.
+        $html_link .= l($link['title'], $link['href'], $link);
+      }
+      else if (!empty($link['title'])) {
+        // Some links are actually not links, but we wrap these in <span> for adding title and class attributes
+        if (empty($link['html'])) {
+          $link['title'] = check_plain($link['title']);
+        }
+        $span_attributes = '';
+        if (isset($link['attributes'])) {
+          $span_attributes = drupal_attributes($link['attributes']);
+        }
+        $html_link .= '<span'. $span_attributes .'>'. $link['title'] .'</span>';
+      }
+
+      $list[] = $html_link;
+
+      $i++;
+    }
+  }
+
+  return implode($sep, $list);
+}
+
+
+
+function site_specific_preprocess_page(&$vars) {
+
+}
+
+function site_specific_preprocess_node(&$vars) {
+  $node = $vars['node'];
+
+}
+
+function site_specific_podium_add_sign($nid=NULL) {
+  $terms[] = taxonomy_get_term(7);
+  $terms[] = taxonomy_get_term(8);
+
+  if (!isset($nid)) {
+    $nid = $_GET['nid'];
+  }
+
+  $params = array('html' => 1);
+  if (isset($nid)) {
+    $params['query'] = 'nid='. $nid;
+  }
+
+  $columns = array();
+  foreach ($terms as $term) {
+    $sign = '<h2 class="title">'. $term->name .'</h2><ul class="podium-add-sign-list clear-block">';
+    $res = taxonomy_select_nodes(array($term->tid), 'or', 0, FALSE, 'n.sticky DESC, n.created DESC');
+    while ($item = db_fetch_object($res)) {
+      $sign_node = node_load($item->nid);
+      $image = field($sign_node, 'image_cache', 0, 'filepath');
+
+
+      $sign .= '<li><div class="podium-add-sign-title">'. l($item->title, "node/{$item->nid}", $params) .'</div>';
+      if ($image) {
+        $thumb = theme('imagecache', 'podium_sign_thumb', $image);
+        $sign .= '<div class="podium-add-sign-image">'. l($thumb, "node/{$item->nid}", $params) .'</div>';
+      }
+      $sign .= '</li>';
+    }
+    $sign .= '</ul>';
+    $columns[] = $sign;
+  }
+
+  $output  = '';
+  $output .= implode('', $columns);
+
+  if ($_GET['ajax']) {
+    print ($output);
+    exit();
+  }
+
+  return $output;
+}
+
+function site_specific_podium_add_wrap($nid=NULL) {
+  $terms[] = taxonomy_get_term(12);
+  if (!isset($nid)) {
+    $nid = $_GET['nid'];
+  }
+
+  $params = array('html' => 1);
+  if (isset($nid)) {
+    $params['query'] = 'nid='. $nid;
+  }
+
+
+  $columns = array();
+  foreach ($terms as $term) {
+    $sign = '<h2 class="title">'. $term->name .'</h2><ul class="podium-add-sign-list clear-block">';
+    $res = taxonomy_select_nodes(array($term->tid), 'or', 0, FALSE, 'n.sticky DESC, n.created DESC');
+    while ($item = db_fetch_object($res)) {
+      $sign_node = node_load($item->nid);
+      $image = field($sign_node, 'image_cache', 0, 'filepath');
+
+      $sign .= '<li><div class="podium-add-sign-title">'. l($item->title, "node/{$item->nid}", $params) .'</div>';
+      if ($image) {
+        $thumb = theme('imagecache', 'podium_sign_thumb', $image);
+        $sign .= '<div class="podium-add-sign-image">'. l($thumb, "node/{$item->nid}", $params) .'</div>';
+      }
+      $sign .= '</li>';
+    }
+    $sign .= '</ul>';
+    $columns[] = $sign;
+  }
+
+  $output  = '';
+  $output .= implode('', $columns);
+
+  if ($_GET['ajax']) {
+    print ($output);
+    exit();
+  }
+
+  return $output;
+}
+
+
+
+function site_specific_form_alter(&$form, $form_state, $form_id) {
+  drupal_add_js('misc/global.js');
+
+  if (strstr($form_id, 'uc_product_add_to_cart_form')) {
+    $node            = $form['#parameters'][2];
+    $has_artwork     = site_specific_node_requires_artwork($node);
+    $podium_tid      = variable_get('product_podium_tid', 1);
+    $podium_sign_tid = variable_get('podium_sign_tid', 13);
+    $podium_wrap_tid = variable_get('podium_wrap_tid', 12);
+    $is_podium       = isset($node->taxonomy[$podium_tid]) ? TRUE : FALSE;
+    $is_podium_sign  = isset($node->taxonomy[$podium_sign_tid]) ? TRUE : FALSE;
+    $is_podium_wrap  = isset($node->taxonomy[$podium_wrap_tid]) ? TRUE : FALSE;
+
+    if ($has_artwork) {
+      $form['#validate'][] = 'site_specific_add_to_cart_validate';
+    }
+
+    if ($is_podium) {
+      site_specific_signage_form($form, $form_state, $form_id);
+    }
+    elseif ($is_podium_sign) {
+      $type = ($is_podium_wrap) ? 'wrap' : 'sign';
+      $adding_to_podium = isset($_GET['nid']);
+
+      $class = 'node-add-'.$type.'-to-podium';
+      if (isset($form['submit']['#attributes']['class'])) {
+        $form['submit']['#attributes']['class'] .= ' '. $class;
+      }
+      else {
+        $form['submit']['#attributes']['class'] = $class;
+      }
+
+      if ($adding_to_podium) {
+        $form['podium_nid'] = array('#type' => 'value', '#value' => $_GET['nid']);
+      }
+      $form['#validate'][] = "site_specific_add_podium_{$type}_validate";
+      $form['#submit'][0] = "site_specific_add_podium_{$type}_submit";
+    }
+
+
+    $price  = '$'.number_format($node->sell_price,2);
+    $retail = '$'.number_format($node->list_price,2);
+
+    $form['qty']['#weight'] = 9;
+    $form['qty']['#horz-form-item'] = 1;
+
+
+    if ($retail > $price) {
+      $price_output = <<<OUT
+       <div class="price-retail">Retail Price <span class="price">{$retail}</span></div>
+       <div class="price-sale">SALE Only <span class="price">{$price}</span></div>
+OUT;
+    }
+    else {
+      $price_output = <<<OUT
+       <div class="price-sale">Only <span class="price">{$price}</span></div>
+OUT;
+    }
+
+    $form['submit']['#weight'] = 10;
+    $form['submit']['#prefix'] = '<div id="product-price-meta" class="clear-block">'. $price_output .'</div>';
+  }
+}
+
+function site_specific_add_podium_sign_validate($form, &$form_state) {
+  $values     = $form_state['values'];
+  $sign_nid   = $values['nid'];
+  $podium_nid = isset($values['podium_nid']) ? $values['podium_nid'] : 0;
+
+  $fid = site_specific_get_artwork_file_id($sign_nid, $podium_nid);
+
+  if (!$fid) {
+    $message = ($podium_nid) ? 'You must upload your artwork before you add this sign to the podium.' : 'You must upload your artwork before you add this sign to your cart';
+    form_set_error('fid', $message);
+  }
+}
+
+function site_specific_add_podium_sign_submit($form, &$form_state) {
+  $values     = $form_state['values'];
+  $sign_nid   = $values['nid'];
+  $podium_nid = $values['podium_nid'];
+
+  $data = array();
+  $data['nid']        = $sign_nid;
+  $data['podium_nid'] = $podium_nid;
+  $data['attributes'] = $values['attributes'];
+  $data['fid']        = site_specific_get_artwork_file_id($sign_nid, $podium_nid);
+
+  site_specific_set_podium_data($podium_nid, 'sign', $data);
+
+  $form_state['redirect'] = "node/{$podium_nid}";
+}
+
+function site_specific_add_podium_wrap_validate($form, &$form_state) {
+  $values     = $form_state['values'];
+  $wrap_nid   = $values['nid'];
+  $podium_nid = isset($values['podium_nid']) ? $values['podium_nid'] : 0;
+
+  if (isset($values['attributes'][9]) && $values['attributes'][9] == 32) {
+    $fid = site_specific_get_artwork_file_id($wrap_nid, $podium_nid);
+    if (!$fid) {
+      $message = ($podium_nid) ? 'You must upload your artwork before you add this wrap to the podium.' : 'You must upload your artwork before you add this wrap to your cart';
+      form_set_error('fid', $message);
+    }
+  }
+
+}
+
+function site_specific_add_podium_wrap_submit($form, &$form_state) {
+  $values     = $form_state['values'];
+  $sign_nid   = $values['nid'];
+  $podium_nid = $values['podium_nid'];
+
+  $data = array();
+  $data['nid']        = $sign_nid;
+  $data['podium_nid'] = $podium_nid;
+  $data['attributes'] = $values['attributes'];
+
+  site_specific_set_podium_data($podium_nid, 'wrap', $data);
+
+  $form_state['redirect'] = "node/{$podium_nid}";
+}
+
+
+
+function site_specific_signage_form(&$form, $form_state, $form_id) {
+  drupal_add_js('misc/thickbox.js');
+  drupal_add_css('misc/thickbox.css');
+
+  $sign = NULL;
+  $wrap = NULL;
+  $opt_sign_output = '';
+
+  $node = $form['#parameters'][2];
+
+  $sign_data = site_specific_get_podium_data($node->nid, 'sign');
+  if (isset($sign_data['nid'])) {
+    $sign = node_load($sign_data['nid']);
+  }
+
+  $wrap_data = site_specific_get_podium_data($node->nid, 'wrap');
+  if (isset($wrap_data['nid'])) {
+    $wrap = node_load($wrap_data['nid']);
+  }
+
+
+  if (!$sign || !$wrap) {
+    $opt_sign_output .= '<div class="cart-opt-add clear-block">';
+    if (!$sign) {
+      $opt_sign_output .= '<a href="#TB_inline?nid='. $node->nid .'&height=500&width=700&inlineId=podium-add-signs" title="Add a Custom Valet Podium Sign" class="podium-add-sign thickbox"><span>Add Custom Sign</span></a>';
+    }
+    if (!$wrap) {
+      $opt_sign_output .= '<a href="#TB_inline?nid='. $node->nid .'&height=400&width=700&inlineId=podium-add-wraps" title="Add a Valet Podium Wrap" class="podium-add-wrap thickbox"><span>Add Podium Wrap</span></a>';
+    }
+    $opt_sign_output .= '</div>';
+  }
+
+  if ($sign) {
+    $file = field_file_load($sign_data['fid']);
+    $price_data = site_specific_get_price_by_attributes($sign, $sign_data);
+
+    $reset_link = l('Remove Sign', "action/podium-sign-reset/{$node->nid}", array('attributes' => array('class' => 'artwork-link')));
+
+    $sign_output .= <<<INFO
+      <div class="sign-info">
+        <div class="form-info-title">{$sign->title}</div>
+        <div class="form-info-meta">Price as configured*: {$price_data['price']}</div>
+        $reset_link
+      </div>
+INFO;
+
+    $opt_sign_output .= roundbox($sign_output, 'ccc round-sign-info');
+  }
+
+  if ($wrap) {
+    $price_data = site_specific_get_price_by_attributes($wrap, $wrap_data);
+    $attr_desc  = site_specific_get_attribute_description($wrap, $wrap_data);
+
+    $reset_link = l('Remove Wrap', "action/podium-wrap-reset/{$node->nid}", array('attributes' => array('class' => 'artwork-link')));
+
+    $wrap_output .= <<<INFO
+      <div class="wrap-info">
+        <div class="form-info-title">{$wrap->title} {$attr_desc}</div>
+        <div class="form-info-meta">Price as configured*: {$price_data['price']}</div>
+        $reset_link
+      </div>
+INFO;
+    $opt_sign_output .= roundbox($wrap_output, 'ccc round-wrap-info');
+  }
+
+  if ($sign || $wrap) {
+    $opt_sign_output .= '<div class="form-info-note">* Not included in price below</div>';
+  }
+
+  $output = <<<OUTPUT
+<div class="attributes">
+  <div class="attribute attribute-sign odd"><div class="form-item clear-block">
+  <label>Optional Signs and Wraps:</label>
+    $opt_sign_output
+  </div></div>
+</div>
+OUTPUT;
+
+  $output .= '<div id="podium-add-signs" style="display:none">'. site_specific_podium_add_sign($node->nid) .'</div>';
+  $output .= '<div id="podium-add-wraps" style="display:none">'. site_specific_podium_add_wrap($node->nid) .'</div>';
+
+  $form['signage'] = array(
+    '#type' => 'markup',
+    '#value' => $output,
+  );
+
+}
+
+
+
+
+function site_specific_add_to_cart_validate($form, &$form_state) {
+  $sign_nid   = $form_state['values']['nid'];
+  $podium_nid = isset($form_state['values']['podium_nid']) ? $form_state['values']['podium_nid'] : NULL;
+
+  $fid = site_specific_get_artwork_file_id($sign_nid, $podium_nid);
+
+  if (!$fid) {
+    form_set_error('fid', 'You must upload your artwork before you add this to your cart.');
+  }
+}
+
+function site_specific_get_artwork_file_id($sign_nid, $podium_nid=NULL) {
+  if (isset($podium_nid)) {
+    return isset($_SESSION['artwork'][$sign_nid][$podium_nid]['fid']) ? $_SESSION['artwork'][$sign_nid][$podium_nid]['fid'] : 0;
+  }
+
+  return isset($_SESSION['artwork'][$sign_nid]['fid']) ? $_SESSION['artwork'][$sign_nid]['fid'] : 0;
+}
+
+function site_specific_set_artwork_file_id($sign_nid, $fid=NULL, $podium_nid=NULL) {
+  if (isset($fid)) {
+    if (isset($podium_nid)) {
+      $_SESSION['artwork'][$sign_nid][$podium_nid]['fid'] = $fid;
+    }
+    else {
+      $_SESSION['artwork'][$sign_nid]['fid'] = $fid;
+    }
+  }
+  else {
+    if (isset($podium_nid)) {
+      unset($_SESSION['artwork'][$sign_nid][$podium_nid]['fid']);
+    }
+    else {
+      unset($_SESSION['artwork'][$sign_nid]['fid']);
+    }
+
+  }
+}
+
+
+function site_specific_get_podium_data($podium_nid, $type='sign') {
+  return isset($_SESSION['podium'][$type][$podium_nid]) ? $_SESSION['podium'][$type][$podium_nid] : NULL;
+}
+
+function site_specific_set_podium_data($podium_nid, $type='sign', $data=NULL) {
+  if (isset($data)) {
+    $_SESSION['podium'][$type][$podium_nid] = $data;
+  }
+  else {
+    unset($_SESSION['podium'][$type][$podium_nid]);
+  }
+}
+
+
+
+function site_specific_node_requires_artwork($node) {
+  $vid             = variable_get('internal_attributes_vid', 3);
+  $has_artwork_tid = variable_get('product_requires_artwork_tid', 9);
+  $has_artwork     = isset($node->taxonomy[$has_artwork_tid]) ? TRUE : FALSE;
+  return $has_artwork;
+}
+
+function site_specific_add_to_cart_data($form_values) {
+  $nid  = $form_values['nid'];
+  $node = node_load($nid);
+  $data = array();
+
+  $podium_tid = variable_get('product_podium_tid', 1);
+  $podium_sign_tid = variable_get('podium_sign_tid', 13);
+
+  $is_podium       = isset($node->taxonomy[$podium_tid]) ? TRUE : FALSE;
+  $is_podium_sign  = isset($node->taxonomy[$podium_sign_tid]) ? TRUE : FALSE;
+  if ($is_podium) {
+    $sign_data = site_specific_get_podium_data($nid, 'sign');
+    $wrap_data = site_specific_get_podium_data($nid, 'wrap');
+    $more_data = uc_attribute_add_to_cart_data($sign_data);
+    $sign_data['model'] = $more_data['model'];
+
+    if ($sign_data['nid']) {
+      uc_cart_add_item($sign_data['nid'], $form_values['qty'], $sign_data, NULL, FALSE, FALSE);
+    }
+    if ($wrap_data['nid']) {
+      uc_cart_add_item($wrap_data['nid'], $form_values['qty'], $wrap_data, NULL, FALSE, FALSE);
+    }
+  }
+  if ($is_podium_sign) {
+    $podium_nid = $_GET['nid'];
+
+    $_GET['destination']     = 'node/'. $podium_nid;
+    $_REQUEST['destination'] = 'node/'. $podium_nid;
+  }
+
+  return $data;
+}
+
+function site_specific_cart_item_description($item) {
+  $output = '';
+  if (isset($item->data['artwork_fid'])) {
+    $file = field_file_load($item->data['artwork_fid']);
+    $output = theme('imagecache', 'cart', $file['filepath']);
+  }
+
+  return $output;
+}
+
+function site_specific_add_artwork_upload_form(&$form_state, &$node) {
+  $form['#attributes'] = array("enctype" => "multipart/form-data");
+
+  $nid = $node->nid;
+
+  $podium_tid      = variable_get('product_podium_tid', 1);
+  $podium_sign_tid = variable_get('podium_sign_tid', 13);
+  $podium_wrap_tid = variable_get('podium_wrap_tid', 12);
+  $is_podium       = isset($node->taxonomy[$podium_tid]) ? TRUE : FALSE;
+  $is_podium_sign  = isset($node->taxonomy[$podium_sign_tid]) ? TRUE : FALSE;
+  $is_podium_wrap  = isset($node->taxonomy[$podium_wrap_tid]) ? TRUE : FALSE;
+
+  $parent_nid  = isset($_GET['nid']) ? $_GET['nid'] : NULL;
+  $fid         = site_specific_get_artwork_file_id($nid, $parent_nid);
+  $change_link = l('Upload new file', "action/artwork-reset/{$nid}/{$parent_nid}", array('attributes' => array('class' => 'artwork-link')));
+
+  $class = ($is_podium_sign) ? 'sign' : '';
+  $class .= ($is_podium_wrap) ? ' wrap' : '';
+  $class .= ($fid) ? ' with-artwork' : '';
+  $form['#attributes']['class'] = $class;
+
+  if ($fid && $is_podium_wrap) {
+    $_SESSION['default_options'][$nid][9] = 32;
+  }
+
+  $title = ($fid) ? 'Your Artwork '. $change_link : 'Upload Your Artwork';
+  $form['title'] = array(
+    '#type' => 'markup',
+    '#value' => '<h1 class="title">'. $title .'</h1>',
+  );
+
+  $weight = 1;
+  $form['prefix'] = array('#type' => 'markup', '#value' => '<div class="artwork-upload-content">', '#weight' => $weight++);
+
+  $form['parent_nid'] = array('#type' => 'value', '#value' => $parent_nid);
+
+  if ($fid) {
+    $file = field_file_load($fid);
+    $form['artwork'] = array(
+      '#type' => 'markup',
+      '#value' => '<div class="artwork-preview">You uploaded '. $file['filename'] .'</div>',
+      '#weight' => $weight++,
+    );
+  }
+  else {
+    $form['artwork'] = array(
+      '#type' => 'file',
+      '#size' => 18,
+      '#file_extensions' => array('ai', 'eps', 'pdf'),
+      '#weight' => $weight++,
+    );
+
+    $form['nid'] = array(
+      '#type' => 'value',
+      '#value' => $nid,
+      '#weight' => $weight++,
+    );
+
+    $form['upload-artwork'] = array(
+      '#type' => 'submit',
+      '#value' => 'Upload Artwork',
+      '#weight' => $weight++,
+    );
+  }
+
+  $form['suffix'] = array('#type' => 'markup', '#value' => '</div>', '#weight' => $weight++,);
+  return $form;
+}
+function site_specific_add_artwork_upload_form_validate($form, &$form_state) {
+  $form_values = $form_state['values'];
+
+  $validators = array(
+    'site_specific_validate_artwork' => array($form['artwork']['#file_extensions']),
+  );
+  if ($file = file_save_upload('artwork', $validators, 'sites/default/files/user_signs')) {
+    $parent_nid  = isset($_GET['nid']) ? $_GET['nid'] : NULL;
+
+    site_specific_set_artwork_file_id($form_values['nid'], $file->fid, $parent_nid);
+  }
+  else {
+    form_set_error('artwork', "An error occurred with your file upload");
+  }
+}
+
+function site_specific_add_artwork_upload_form_submit($form, &$form_state) {
+  $values = $form_state['values'];
+
+  if (isset($values['parent_nid'])) {
+    drupal_goto("node/{$values['nid']}", "nid={$values['parent_nid']}");
+  }
+}
+
+function site_specific_validate_artwork(&$file, $extensions) {
+  $errors = array();
+
+  $info = pathinfo($file->filename);
+  if (is_array($extensions) && count($extensions) && !in_array($info['extension'], $extensions)) {
+    $errors[] = t('Only the following file extensions are allowed: '. implode(', ', $extensions));
+  }
+
+  return $errors;
+}
+
+
+
+
+function site_specific_token_values($type, $object = NULL) {
+  global $base_url;
+
+  switch ($type) {
+    case 'global':
+
+      break;
+  }
+
+  return $values;
+}
+
+
+function dirList($directory, $regex=NULL)
+{
+    // create an array to hold directory list
+    $results = array();
+    // create a handler for the directory
+    $handler = opendir($directory);
+
+    // keep going until all files in directory have been read
+    while ($file = readdir($handler)) {
+        // if $file isn't this directory or its parent, add it to the results array
+        if ($file != '.' && $file != '..') {
+          if (isset($regex) && preg_match($regex, $file)) {
+            $results[] = $file;
+          }
+        }
+    }
+    // tidy up: close the handler
+    closedir($handler);
+    // done!
+    return $results;
+}
+
+function site_specific_action($action, $nid, $param1=NULL, $param2=NULL, $param3=NULL) {
+  $status = 0;
+  if ($action == 'get-price') {
+    $data = site_specific_get_product_by_attribute($nid);
+    $status = 1;
+  }
+  elseif ($action == 'artwork-reset') {
+    site_specific_set_artwork_file_id($nid, NULL, $param1);
+    $path = "node/{$nid}";
+    $query = isset($param1) ? "nid={$param1}" : NULL;
+    drupal_goto($path, $query);
+  }
+  elseif ($action == 'podium-sign-reset') {
+    $sign_data = site_specific_get_podium_data($nid, 'sign');
+
+    //remove it from the cart if it exists
+    $cart_items = uc_cart_get_contents();
+    foreach ($cart_items as $item) {
+      if (isset($item->data['podium_nid']) && $item->data['podium_nid'] == $nid) {
+        uc_cart_remove_item($item->nid, NULL, $item->data);
+      }
+    }
+
+    // reset the podium
+    site_specific_set_podium_data($nid, 'sign', NULL);
+
+    $path = "node/{$nid}";
+    drupal_goto($path);
+  }
+  elseif ($action == 'podium-wrap-reset') {
+    $wrap_data = site_specific_get_podium_data($nid, 'wrap');
+
+    //remove it from the cart if it exists
+    $cart_items = uc_cart_get_contents();
+    foreach ($cart_items as $item) {
+      if (isset($item->data['podium_nid']) && $item->data['podium_nid'] == $nid) {
+        uc_cart_remove_item($item->nid, NULL, $item->data);
+      }
+    }
+
+    // reset the podium
+    site_specific_set_podium_data($nid, 'wrap', NULL);
+
+    $path = "node/{$nid}";
+    drupal_goto($path);
+  }
+
+  $result = array(
+    'status' => $status,
+    'data' =>  $data,
+  );
+  print drupal_to_js($result);
+
+  exit();
+}
+
+
+function site_specific_get_price_by_attributes($node, $info) {
+  $price  = $node->sell_price;
+  $retail = $node->list_price;
+
+  $items = isset($info['attributes']) ? $info['attributes'] : array();
+  foreach ($items as $aid => $val) {
+    $attr = $node->attributes[$aid];
+    $opt  = $attr->options[$val];
+    $price += $opt->price;
+    $retail += $opt->price;
+  }
+
+  $data['raw']['price'] = $price;
+  $data['raw']['retail'] = $price;
+  $data['price']  = '$'.number_format($price,2);
+  $data['retail'] = '$'.number_format($retail,2);
+
+  return $data;
+}
+
+function site_specific_get_attribute_description($node, $info) {
+  $output = '';
+
+  $items = isset($info['attributes']) ? $info['attributes'] : array();
+  foreach ($items as $aid => $val) {
+    $attr = $node->attributes[$aid];
+    $opt  = $attr->options[$val];
+    $output .= $attr->name . ': '. $opt->name;
+  }
+  return $output;
+}
+
+function site_specific_get_product_by_attribute($nid) {
+  $combo = $_GET['combo'];
+
+  $node = node_load($nid);
+  $price = $node->sell_price;
+  $retail = $node->list_price;
+  $callbacks = '';
+
+  $items = split("\|", $combo);
+  foreach ($items as $item) {
+    list($aid, $val) = split(";", $item, 2);
+    $attr = $node->attributes[$aid];
+    $opt  = $attr->options[$val];
+    $price += $opt->price;
+    $retail += $opt->price;
+    $callbacks .= site_specific_get_attribute_js_callbacks($attr, $opt);
+  }
+
+  $data['price'] = '$'.number_format($price,2);
+  $data['retail'] = '$'.number_format($retail,2);
+  $data['callbacks'] = $callbacks;
+  return $data;
+}
+
+function site_specific_get_attribute_js_callbacks($attr, $opt) {
+  $callback = '';
+  if ($attr->aid == 9) {
+    if ($opt->oid == 31) {
+      $callback = "showArtworkUpload(0);";
+    }
+    elseif ($opt->oid == 32) {
+      $callback = "showArtworkUpload(1);";
+    }
+  }
+  return $callback;
+}
+
+
+/**
+ * Implementation of hook_block().
+ *
+ * Displays the most recent 10 blog titles.
+ */
+function site_specific_recent_blogs() {
+  global $user;
+  if (user_access('access content')) {
+    $result = db_query_range(db_rewrite_sql("SELECT n.nid, n.title, n.created FROM {node} n WHERE n.type = 'blog' AND n.status = 1 ORDER BY n.created DESC"), 0, 3);
+    if ($node_title_list = node_title_list($result)) {
+      $content = $node_title_list;
+      return $content;
+    }
+  }
+}
+
+function site_specific_blog_title_list($result, $title = NULL) {
+  $items = array();
+  $num_rows = FALSE;
+  while ($node = db_fetch_object($result)) {
+    $items[] = l($node->title, 'node/'. $node->nid, !empty($node->comment_count) ? array('attributes' => array('title' => format_plural($node->comment_count, '1 comment', '@count comments'))) : array());
+    $num_rows = TRUE;
+  }
+
+  return $num_rows ? theme('node_list', $items, $title) : FALSE;
+}
+
+
+function site_specific_cars($car) {
+  $function = "site_specific_cars_{$car}";
+  return $function();
+}
+
+function site_specific_cars_bentley() {
+  $output = <<<OUTPUT
+<p>The Bentley Continental Flying Spur is one of the finest luxury automobiles on the planet. Here is a quick introduction of how to operate it, should you be so lucky.</p>
+
+<p><img src="/sites/default/files/cars/bentley/bentley_flying_spur_2006.jpg"></p>
+
+
+<h1 class="title">1. First step: pony up some cash.</h1>
+<div class="how-to-drive-step clear-block">
+<p>If you aren't lucky enough to valet one of these beauties, you'll have to shell out $180,000 to get behind the wheel of a Bentley Continental Flying Spur. I don't even want to know how much the oil changes cost.</p>
+</div>
+
+
+<h1 class="title">2. Get a load of this ride.</h1>
+<div class="how-to-drive-step clear-block">
+<p>Here is what Bentley have to say for themselves:</p>
+
+<blockquote>"The Continental Flying Spur a truly individual four-door offering space and freedom. The freedom of choice, to have pure refinement and style.A sumptuous and spacious four-door Grand Tourer with the heart and soul of the most breathtaking high-performance coup&eacute; in the world, the redefined Continental Flying Spur offers enhanced levels of personalisation, comfort and ride quality taken to new heights. A place where you and your fellow travellers can enjoy the freedom of class leading space and pure potency."</blockquote>
+
+<p>Wow. Sounds impressive. We decided to see for ourselves.</p>
+
+</div>
+
+
+<h1 class="title">3. Check the measurements.</h1>
+<div class="how-to-drive-step clear-block">
+<p>0-60 in 4.9 seconds...</p>
+
+<p><b>4.9 SECONDS!!!</b> Wow. That's M5 territory.</p>
+
+<p>Aided by a listed 552 break horse power. That's a lot of cowboys. 479 foot pounds of torque keep your buns in the seat-- the max band is at 1600 RPM-- that's some Barry White bass. The Continental has a 6 speed automatic gear box, and with paddle shifters on the wheel for the kid in you.</p>
+
+<p>Pull over often. To show off your ride-- and to refill it. This 12 cylinder monster munches down 1 gallon of gas for every 10 miles covered in the city. But hey, you can afford it, right?</p>
+
+<p>Oh yeah, it's got all wheel drive. That means no donuts for you.</p>
+</div>
+
+<h1 class="title">4. The keys to her heart.</h1>
+<div class="how-to-drive-step clear-block">
+
+<div class="clear-block">
+<div style="float:left; width:35%"><img src="/sites/default/files/cars/bentley/b_key-297x215.jpg" class="img-border" style="margin:0 10px 10px 0;" /></div>
+<p style="float: left; width:65%">
+There are two different key remotes for this vehicle.  If you have the fully functional key it will have three buttons; lock, unlock, and trunk.  If you have the valet key there will be no button for the trunk and therefore it cannot be accessed. If the vehicle is parked and you are outside of the car with the windows down, they can be rolled up by holding down the lock button on the remote.</p>
+</div>
+
+<div class="clear-block">
+<p style="float: left; width:350px">If you want, you can use the remote to unlock, push and will open the door.  If you wish to use the remote to unlock, push and hold the unlock symbol.  To lock the door with the keys in your pocket press the black button on the outside of the handle.  This will lock the car.  Watch for the flashing red light on the inside of the top door panel to make sure the vehicle is secure.  A flashing red light indicates it's locked. The doors feature an automatic latching feature, gently close the door so it touches the door sill latch, from there the automatic feature will take over and completely close and latch the door.</p>
+<div style="float:left; width: 320px">
+<img src="/sites/default/files/cars/bentley/b_handle-289x207.jpg" class="img-border" />
+<img src="/sites/default/files/cars/bentley/b_door_lock-289x155.jpg" class="img-border" /></div>
+</div>
+
+</div>
+
+
+
+<h1 class="title">5. Interior Luxury</h1>
+<div class="how-to-drive-step clear-block">
+
+<p>Seat controls are on the lower bottom left side of the driver's seat.</p>
+<p><img src="/sites/default/files/cars/bentley/b_seat-553x389.jpg" class="img-border"></p>
+
+<p class="clear-block"><img src="/sites/default/files/cars/bentley/b_key_ignition-321x230.jpg" align="left" class="img-border">
+The ignition is located on the left side of the dash board much like the Porsche.  It is not necessary to use this in order to start the vehicle.  Much like the doors, the Bentley senses the key in the area and will start without inserting it into the ignition.  The ignition can be used however to switch batteries in the event the main battery is dead.  This vehicle is equipped with a secondary battery.  To switch over to the auxiliary battery simply insert the key into the ignition and turn counter clockwise.  This will switch power supplies.</p>
+
+<p>
+<img src="/sites/default/files/cars/bentley/b_dash-577x357.jpg" class="img-border" style="width:45%">
+<img src="/sites/default/files/cars/bentley/b_int-564x415.jpg" class="img-border" style="width:45%">
+</p>
+</div>
+
+
+
+
+<h1 class="title">6. Lights, Locks, Windows</h1>
+<div class="how-to-drive-step clear-block">
+
+The headlight switch is to the left of the
+steering column by the ignition switch.
+Automatic mode is designated through an
+�O� symbol while the ON position is located
+to the far right.  To turn on simply turn the
+knob clockwise all the way.  The fog light
+button is located to the right of the knob.
+<img src="/sites/default/files/cars/bentley/b_lights-283x201.jpg" class="img-border">
+<img src="/sites/default/files/cars/bentley/b_lock_handle-294x211.jpg" class="img-border">
+<img src="/sites/default/files/cars/bentley/b_locks-297x211.jpg" class="img-border">
+Once in the vehicle, the lock and unlock buttons are located on the driver�s side door next to the
+door handle.  Also located on the driver�s side door is the window controls.
+</div>
+
+
+
+
+
+<h1 class="title">7. Unlock the beast. Ignition, Powertrain</h1>
+<div class="how-to-drive-step clear-block">
+
+The Bentley is started by pushing down the Start/ Stop button located in the center
+console below the gear shifter.  With the key in pocket or in the ignition hold and depress
+the Start/ Stop button with your foot on the brake.  This will bring to life the Bentley�s twin-
+turbo W12 engine with 552 hp.
+<img src="/sites/default/files/cars/bentley/b_start-577x428.jpg" class="img-border">
+<img src="/sites/default/files/cars/bentley/b_steering-568x421.jpg" class="img-border">
+</div>
+
+
+
+
+<h1 class="title">8. Wanna punch it?</h1>
+<div class="how-to-drive-step clear-block">
+
+Using the paddle shifters is not necessary, but if you must they are located behind the
+steering wheel.  The gear position stick must be in manual drive mode.  Pull back on the
+right paddle to up shift and pull back on the left paddle to downshift.  Gear selection
+can be viewed on the dashboard on the LCD display.
+
+<img src="/sites/default/files/cars/bentley/b_dash_lights-562x406.jpg" class="img-border">
+</div>
+
+
+
+
+
+<h1 class="title">9. Turn the parking break on/off.</h1>
+<div class="how-to-drive-step clear-block">
+
+The parking brake is electronic and
+activated though a button by the
+gear selection lever.  Simply pull
+back the button until the light under
+the P is illuminated to engage and to
+disengage push back down on the
+button until there is no red light.
+<img src="/sites/default/files/cars/bentley/b_parking-297x204.jpg" class="img-border">
+<img src="/sites/default/files/cars/bentley/b_radio-571x424.jpg" class="img-border">
+</div>
+
+
+
+<h1 class="title">10. Give it some gas. Easy tiger!</h1>
+<div class="how-to-drive-step clear-block">
+
+Gently squeeze the throttle
+with your foot moving the car
+forward or back depending
+on your gear selection.
+<img src="/sites/default/files/cars/bentley/b_int-297x205.jpg" class="img-border">
+</div>
+
+
+
+
+
+<h1 class="title">11. Get some sun.</h1>
+<div class="how-to-drive-step clear-block">
+
+Sunroof controls are located by the rear view mirror, as well as the interior light controls.
+<img src="/sites/default/files/cars/bentley/b_sunroof-566x411.jpg" class="img-border">
+</div>
+
+
+
+
+<h1 class="title">12. Fold those mirrors in if you get in a jam.</h1>
+<div class="how-to-drive-step clear-block">
+
+To fold the mirrors inward there is a knob
+located in the center console. Turn
+counter clockwise to fold and again to
+unfold while parked in tight areas.
+<img src="/sites/default/files/cars/bentley/b_mirror-297x213.jpg" class="img-border">
+</div>
+
+
+
+
+<h1 class="title">13. Need to hide something in the trunk?</h1>
+<div class="how-to-drive-step clear-block">
+
+To open the trunk press on the Bentley �B�
+located on the emblem.  This will
+automatically open the trunk while the
+vehicle is unlocked.  To close the trunk use
+the �BOOT� button located on the trunk by
+the latch on the bottom surface.  Hit this
+button once and the trunk will automatically
+close.
+<img src="/sites/default/files/cars/bentley/b_trunk-297x206.jpg" class="img-border">
+</div>
+
+
+
+
+OUTPUT;
+  return $output;
+}
+
+
+
+
+function site_specific_products_landing() {
+  $trail = module_invoke('site_specific', 'build_active_trail', 'product', NULL);
+  menu_set_active_trail($trail);
+
+  $terms = taxonomy_get_tree(1);
+  $output = '';
+  foreach ($terms as $term) {
+    $description = '<div class="description">'. $term->description .'</div>';
+
+    $tids = array($term->tid);
+    $output .= '<div class="all-products-section">';
+    $output .= '<div class="all-products-title">'. roundbox('<h1 class="title">'. $term->name .'</h1>' . $description) .'</div>';
+    $output .= '<div class="all-products-products">';
+    $output .= theme('taxonomy_term_page', $tids, taxonomy_select_nodes($tids, 'or', 0, TRUE), TRUE);
+    $output .= '</div></div>';
+  }
+
+  return $output;
+}
+
+function consume_blog() {
+  require_once './includes/XMLWrite.class.php';
+  require_once './includes/XMLRead.class.php';
+
+  $ch = curl_init();
+  curl_setopt($ch, CURLOPT_URL, 'http://www.thevaletspot.com/blog/feed');
+  curl_setopt($ch, CURLOPT_VERBOSE, 1);
+  curl_setopt($ch, CURLOPT_POST, 1);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+  curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
+  $result = curl_exec($ch);
+
+  $xmlObj = new XMLRead(FALSE);
+  $xml    = $xmlObj->xml_parseString($result);
+
+
+  $items = $xml->getChildren('rss/channel');
+  foreach ($items as $item) {
+    $tag = $item->getTag();
+    if ($tag == 'item') {
+
+      $blog = new stdClass();
+      $blog->type = 'blog';
+      $blog->terms = array();
+
+      $info = $item->getChildren();
+      foreach ($info as $datum) {
+        switch ($datum->getTag()) {
+        case 'title':
+          $blog->title = $datum->getCData('title');
+          break;
+
+        case 'link':
+          $blog->path = str_replace(array('http://www.thevaletspot.com/', 'http://thevaletspot.com/'), array('',''), $datum->getCData());
+          break;
+
+        case 'pubDate':
+          $blog->created = strtotime($datum->getCData());
+          break;
+
+        case 'category':
+          $blog->terms[] = $datum->getCData();
+          break;
+
+        case 'description':
+          $blog->teaser = $datum->getCData();
+          break;
+
+        case 'content:encoded':
+          $blog->body = $datum->getCData();
+          break;
+        }
+      }
+
+printa($blog);
+    }
+  }
+
+exit();
+}

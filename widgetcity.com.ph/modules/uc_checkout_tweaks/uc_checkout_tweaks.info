@@ -1,0 +1,13 @@
+; $Id: uc_checkout_tweaks.info,v 1.1 2010/10/22 16:41:25 longwave Exp $
+name = Checkout tweaks
+description = Adds extra options to the Ubercart checkout settings pages.
+dependencies[] = uc_cart
+package = "Ubercart - extra"
+core = 6.x
+
+; Information added by drupal.org packaging script on 2010-10-27
+version = "6.x-1.1"
+core = "6.x"
+project = "uc_checkout_tweaks"
+datestamp = "1288187437"
+

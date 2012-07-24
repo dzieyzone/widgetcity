@@ -1,0 +1,7 @@
+name = Price Editor
+description = Multiple price editor for Ubercart.
+version = 6.x-1.0
+core = 6.x
+dependencies[] = uc_product
+dependencies[] = imagecache
+package = Ubercart - extra
