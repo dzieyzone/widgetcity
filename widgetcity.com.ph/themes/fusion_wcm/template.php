@@ -14,6 +14,7 @@ function fusion_wcm_preprocess_node_product(&$vars) {
   $node = $vars['node'];
   if (!$vars['teaser']) {
     drupal_add_css(drupal_get_path('theme', 'fusion_wcm') . '/css/node.css');
+    drupal_add_js(drupal_get_path('theme', 'fusion_wcm') . '/js/products.js');
   }
 
   $vars['phaseout'] = (array_key_exists(95, $node->taxonomy))?true:false;
