@@ -1,5 +1,5 @@
 $(document).ready(function() {
-	$("dl.dropdown .menu a").click(function() {
+  $("dl.dropdown .menu a").click(function() {
 		$("dd ul", $(this).parents('.dropdown')).toggle();
 		return false;
 	});
