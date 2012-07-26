@@ -100,12 +100,8 @@ function fusion_wcm_preprocess_search_block_form(&$variables) {
 }
 
 function fusion_wcm_preprocess_views_view(&$variables) {
-	if ($variables['name'] == 'front'){
-		$theme_path = drupal_get_path('theme', 'fusion_wcm');
-//		drupal_add_js( $theme_path . '/js/jquery.ui.core.js');
-//		drupal_add_js( $theme_path . '/js/jquery.ui.widget.js');
-//		drupal_add_js( $theme_path . '/js/jquery.ui.selectmenu.js');
-		drupal_add_js( $theme_path . '/js/global.js');
-//		drupal_add_css( $theme_path . '/css/jquery.ui.selectmenu.css');
-	}
+  if ($variables['name'] == 'front'){
+    $theme_path = drupal_get_path('theme', 'widgetcity2012');
+    drupal_add_js( $theme_path . '/js/global.js');
+  }
 }

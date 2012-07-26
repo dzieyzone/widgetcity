@@ -33,6 +33,9 @@ a:active {
 
 /* HTML Elements
 -------------------------------------------------------------- */
+html {
+  background: url('../images/bg.jpg');
+}
 body {
 }
 
@@ -100,7 +103,15 @@ body {
 .header-top {
 }
 
-
+.header-top-inner {
+  background:url('../images/bg-menu.png') repeat-x;
+  margin: 0 10px;
+}
+.header-group-inner {
+  background:url('../images/bg-header.png') no-repeat;
+  margin: 0 10px 10px 10px;
+  height: 345px;
+}
 /* Primary Menu
 /-------------------------------------------------------------- */
 /* Add general styles for primary menu here, such as typography, borders, floats,
@@ -223,6 +234,10 @@ body {
 .main-wrapper {
 }
 
+.main-inner {
+  background: #FFF;
+  padding-top: 30px;
+}
 
 /* Sidebar Regions
 -------------------------------------------------------------- */
