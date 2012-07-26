@@ -15,6 +15,7 @@ function widgetcity2012_preprocess_node_product(&$vars) {
 	
   if (!$vars['teaser']) {
 		drupal_add_css(drupal_get_path('theme', 'widgetcity2012') . '/css/node.css');
+		drupal_add_js(drupal_get_path('theme', 'widgetcity2012') . '/js/products.js');
 	}
 	
 	$vars['phaseout'] = (array_key_exists(95, $node->taxonomy))?true:false;
