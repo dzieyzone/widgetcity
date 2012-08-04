@@ -1,0 +1,32 @@
+<?php
+// $Id: parallel.install,v 1.2.2.3 2010/03/18 06:57:59 mikeytown2 Exp $
+
+/**
+ * @file
+ * Install hooks for parallel module.
+ */
+
+/**
+ * Implementation of hook_install().
+ */
+function parallel_install() {
+  db_query("UPDATE {system} SET weight = 100 WHERE name = 'parallel'");
+  drupal_rebuild_theme_registry();
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function parallel_uninstall() {
+  db_query("DELETE FROM {variable} WHERE name LIKE '%s_%%'", 'parallel');
+}
+
+/**
+ * Parallel must run after jQuery UI.  Alter the Parallel's weight.
+ */
+function parallel_update_6100() {
+  $return = array();
+  $return[] = update_sql("UPDATE {system} SET weight = 100 WHERE name = 'parallel'");
+  // update.php runs drupal_rebuild_theme_registry();
+  return $return;
+}

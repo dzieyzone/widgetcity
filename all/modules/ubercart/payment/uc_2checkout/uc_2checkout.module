@@ -1,5 +1,4 @@
 <?php
-// $Id: uc_2checkout.module,v 1.6.2.10 2009/09/21 14:34:50 islandusurper Exp $
 
 /**
  * @file
@@ -8,7 +7,7 @@
 
 
 /**
- * Implementation of hook_menu().
+ * Implements hook_menu().
  */
 function uc_2checkout_menu() {
   $items = array();
@@ -20,19 +19,12 @@ function uc_2checkout_menu() {
     'type' => MENU_CALLBACK,
     'file' => 'uc_2checkout.pages.inc',
   );
-  $items['cart/2checkout/finalize'] = array(
-    'title' => 'Order complete',
-    'page callback' => 'uc_2checkout_finalize',
-    'access callback' => 'uc_2checkout_completion_access',
-    'type' => MENU_CALLBACK,
-    'file' => 'uc_2checkout.pages.inc',
-  );
 
   return $items;
 }
 
 /**
- * Implementation of hook_init().
+ * Implements hook_init().
  */
 function uc_2checkout_init() {
   global $conf;
@@ -48,20 +40,20 @@ function uc_2checkout_completion_access() {
 }
 
 /**
- * Implementation of hook_ucga_display().
+ * Implements hook_ucga_display().
  */
 function uc_2checkout_ucga_display() {
   // Tell UC Google Analytics to display the e-commerce JS on the custom
   // order completion page for this module.
-  if (arg(0) == 'cart' && arg(1) == '2checkout' && arg(2) == 'finalize') {
+  if (arg(0) == 'cart' && arg(1) == '2checkout' && arg(2) == 'complete') {
     return TRUE;
   }
 }
 
 /**
- * Implementation of hook_form_alter().
+ * Implements hook_form_alter().
  */
-function uc_2checkout_form_alter(&$form, &$form_state, $form_id) {
+function uc_2checkout_form_alter(&$form, $form_state, $form_id) {
   if ($form_id == 'uc_cart_checkout_review_form' && ($order_id = intval($_SESSION['cart_order'])) > 0) {
     $order = uc_order_load($order_id);
 
@@ -75,14 +67,14 @@ function uc_2checkout_form_alter(&$form, &$form_state, $form_id) {
 }
 
 /**
- * Implementation of hook_payment_method().
+ * Implements hook_payment_method().
  *
  * @see uc_payment_method_2checkout()
  */
 function uc_2checkout_payment_method() {
   $path = base_path() . drupal_get_path('module', 'uc_2checkout');
   $title = variable_get('uc_2checkout_method_title', t('Credit card on a secure server:'));
-  $title .= '<br /><img src="'. $path .'/2cocc05.gif" style="position: relative; left: 2.5em;">';
+  $title .= '<br /><img src="'. $path .'/2co_logo.jpg" style="position: relative; left: 2.2em;" />';
 
   $methods[] = array(
     'id' => '2checkout',

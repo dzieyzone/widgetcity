@@ -1,5 +1,4 @@
 <?php
-// $Id: uc_cybersource.soap.inc,v 1.1.4.3 2008/11/07 21:13:27 islandusurper Exp $
 
 /**
  * @file
@@ -36,4 +35,3 @@ class CyberSourceSoapClient extends SoapClient {
     return parent::__doRequest($request, $location, $action, $version);
   }
 }
-

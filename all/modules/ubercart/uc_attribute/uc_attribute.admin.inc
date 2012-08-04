@@ -1,21 +1,19 @@
 <?php
-// $Id: uc_attribute.admin.inc,v 1.1.2.24 2009/10/20 20:58:06 islandusurper Exp $
 
 /**
  * @file
  * Attribute administration menu items.
- *
  */
 
 /**
- * Display a paged list and overview of existing product attributes.
+ * Displays a paged list and overview of existing product attributes.
  */
 function uc_attribute_admin() {
   $header = array(
-    array('data' => t('Name'), 'field' => 'a.name', 'sort' => 'asc'),
-    array('data' => t('Label'), 'field' => 'a.label'),
+    array('data' => t('Name'), 'field' => 'name', 'sort' => 'asc'),
+    array('data' => t('Label'), 'field' => 'label'),
     t('Required'),
-    array('data' => t('List position'), 'field' => 'a.ordering'),
+    array('data' => t('List position'), 'field' => 'ordering'),
     t('Number of options'),
     t('Display type'),
     t('Operations'),
@@ -23,8 +21,11 @@ function uc_attribute_admin() {
 
   $display_types = _uc_attribute_display_types();
 
-  $result = pager_query("SELECT a.aid, a.name, a.label, a.required, a.ordering, a.display, COUNT(ao.oid) AS options FROM {uc_attributes} AS a LEFT JOIN {uc_attribute_options} AS ao ON a.aid = ao.aid GROUP BY a.aid, a.name, a.label, a.ordering, a.required, a.display". tablesort_sql($header), 30, 0, "SELECT COUNT(aid) FROM {uc_attributes}");
+  $rows = array();
+
+  $result = pager_query("SELECT aid, name, label, required, ordering, display FROM {uc_attributes}". tablesort_sql($header), 30, 0);
   while ($attr = db_fetch_object($result)) {
+    $attr->options = db_result(db_query('SELECT COUNT(*) FROM {uc_attribute_options} WHERE aid = %d', $attr->aid));
     if (empty($attr->label)) {
       $attr->label = $attr->name;
     }
@@ -59,8 +60,8 @@ function uc_attribute_admin() {
 /**
  * Form builder for product attributes.
  *
- * @ingroup forms
  * @see uc_attribute_form_submit()
+ * @ingroup forms
  */
 function uc_attribute_form($form_state, $attribute = NULL) {
   // If an attribute specified, add its ID as a hidden value.
@@ -70,31 +71,41 @@ function uc_attribute_form($form_state, $attribute = NULL) {
     drupal_set_title(t('Edit attribute: %name', array('%name' => $attribute->name)));
   }
 
+  if (isset($attribute->name)) {
+    if (empty($attribute->label)) {
+      $attribute->label = $attribute->name;
+    }
+    $name = $attribute->name;
+    $label = $attribute->label;
+  }
+  else {
+    $name = $label = '';
+  }
   $form['name'] = array(
     '#type' => 'textfield',
     '#title' => t('Name'),
     '#description' => t('The name of the attribute used in administrative forms'),
-    '#default_value' => $attribute->name,
+    '#default_value' => $name,
     '#required' => TRUE,
   );
   $form['label'] = array(
     '#type' => 'textfield',
     '#title' => t('Label'),
     '#description' => t("Enter a label that customers will see instead of the attribute name. Use &lt;none&gt; if you don't want a title to appear at all."),
-    '#default_value' => empty($attribute->label) ? $attribute->name : $attribute->label,
+    '#default_value' => $label,
   );
   $form['description'] = array(
     '#type' => 'textfield',
     '#title' => t('Help text'),
     '#description' => t('<b>Optional.</b> Enter the help text that will display beneath the attribute on product add to cart forms.'),
-    '#default_value' => $attribute->description,
+    '#default_value' => isset($attribute->description) ? $attribute->description : '',
     '#maxlength' => 255,
   );
   $form['required'] = array(
     '#type' => 'checkbox',
     '#title' => t('Make this attribute required, forcing the customer to choose an option.'),
     '#description' => t('Selecting this for an attribute will disregard any default option you specify.<br />May be overridden at the product level.'),
-    '#default_value' => $attribute->required,
+    '#default_value' => isset($attribute->required) ? $attribute->required : 0,
   );
   $form['display'] = array(
     '#type' => 'select',
@@ -105,6 +116,7 @@ function uc_attribute_form($form_state, $attribute = NULL) {
   );
   $form['ordering'] = array(
     '#type' => 'weight',
+    '#delta' => 25,
     '#title' => t('List position'),
     '#description' => t('Multiple attributes on an add to cart form are sorted by this value and then by their name.<br />May be overridden at the product level.'),
     '#default_value' => isset($attribute->ordering) ? $attribute->ordering : 0,
@@ -120,7 +132,9 @@ function uc_attribute_form($form_state, $attribute = NULL) {
 }
 
 /**
- * @see uc_attribute_add_form()
+ * Form submission handler for uc_attribute_form().
+ *
+ * @see uc_attribute_form()
  */
 function uc_attribute_form_submit($form, &$form_state) {
   if (!empty($form_state['values']['aid'])) {
@@ -135,7 +149,7 @@ function uc_attribute_form_submit($form, &$form_state) {
 }
 
 /**
- * Confirm the deletion of the given attribute.
+ * Confirms the deletion of the given attribute.
  *
  * @see uc_attribute_delete_confirm_submit()
  */
@@ -159,6 +173,8 @@ function uc_attribute_delete_confirm($form_state, $attribute) {
 }
 
 /**
+ * Form submission handler for uc_attribute_delete_confirm().
+ *
  * @see uc_attribute_delete_confirm()
  */
 function uc_attribute_delete_confirm_submit($form, &$form_state) {
@@ -175,33 +191,147 @@ function uc_attribute_delete_confirm_submit($form, &$form_state) {
 }
 
 /**
- * Change the display of attribute option prices.
+ * Form builder for bulk product updates.
+ *
+ * @see uc_attribute_bulk_update_flush()
+ * @see uc_attribute_bulk_update_flush_all()
+ * @see theme_uc_attribute_bulk_update_form()
+ * @ingroup forms
+ */
+function uc_attribute_bulk_update_form($form_state, $class) {
+  drupal_set_title(check_plain($class->name));
+
+  $form['node_type'] = array(
+    '#type' => 'value',
+    '#value' => $class->pcid,
+  );
+
+  // Select all products with current class.
+  $result = pager_query("SELECT n.nid, n.title, n.status, nt.name FROM {node} n LEFT JOIN {node_type} nt ON nt.type = n.type WHERE nt.type = '%s'", 50, 0, NULL, $class->pcid);
+  $nodes = array();
+  while ($node = db_fetch_object($result)) {
+    $nodes[$node->nid] = '';
+    $form['title'][$node->nid] = array('#value' => l($node->title, 'node/' . $node->nid));
+    $form['status'][$node->nid] =  array('#value' => ($node->status ? t('published') : t('not published')));
+    $form['type'][$node->nid] =  array('#value' => check_plain($node->name));
+  }
+
+  $form['nodes'] = array('#type' => 'checkboxes', '#options' => $nodes);
+
+  $form['flush'] = array(
+    '#type' => 'submit',
+    '#value' => t('Flush selected'),
+    '#submit' => array('uc_attribute_bulk_update_flush'),
+  );
+  $form['flush_all'] = array(
+    '#type' => 'submit',
+    '#value' => t('Flush all'),
+    '#submit' => array('uc_attribute_bulk_update_flush_all'),
+  );
+
+  $form['pager'] = array('#value' => theme('pager', NULL, 50, 0));
+
+  return $form;
+}
+
+/**
+ * Displays the bulk product update form.
+ *
+ * @see uc_attribute_bulk_update_form()
+ * @ingroup themeable
+ */
+function theme_uc_attribute_bulk_update_form($form) {
+  $output = '';
+
+  $has_products = isset($form['title']) && is_array($form['title']);
+
+  $header[] = theme('table_select_header_cell');
+  $header[] = t('Title');
+  $header[] = t('Status');
+  $header[] = t('Type');
+
+  if ($has_products) {
+    foreach (element_children($form['title']) as $key) {
+      $row = array();
+      $row[] = drupal_render($form['nodes'][$key]);
+      $row[] = drupal_render($form['title'][$key]);
+      $row[] = drupal_render($form['status'][$key]);
+      $row[] = drupal_render($form['type'][$key]);
+      $rows[] = $row;
+    }
+  }
+  else {
+    $rows[] = array(array('data' => t('No products available.'), 'colspan' => '6'));
+  }
+
+  $output .= theme('table', $header, $rows);
+  if ($form['pager']['#value']) {
+    $output .= drupal_render($form['pager']);
+  }
+
+  $output .= drupal_render($form);
+
+  $output .= '<p>' . t('Flush actions take place immediately and cannot be undone.') . '</p>';
+
+  return $output;
+}
+
+/**
+ * Form submission handler for uc_attribute_bulk_update_form().
+ *
+ * @see uc_attribute_bulk_update_form()
+ */
+function uc_attribute_bulk_update_flush($form, &$form_state) {
+  $nodes = array_filter($form_state['values']['nodes']);
+  foreach ($nodes as $nid) {
+    $node = node_load($nid);
+    uc_attribute_node_reset($node);
+  }
+  drupal_set_message(t("Bulk update completed successfully on selected products."));
+}
+
+/**
+ * Form submission handler for uc_attribute_bulk_update_form().
+ *
+ * @see uc_attribute_bulk_update_form()
+ */
+function uc_attribute_bulk_update_flush_all($form, &$form_state) {
+  $result = db_query("SELECT nid FROM {node} WHERE type = '%s'", $form_state['values']['node_type']);
+  while ($item = db_fetch_object($result)) {
+    $node = node_load($item->nid);
+    uc_attribute_node_reset($node);
+  }
+  drupal_set_message(t("Bulk update completed successfully on all products in this class."));
+}
+
+/**
+ * Changes the display of attribute option prices.
  *
  * @ingroup forms
  */
 function uc_attribute_admin_settings() {
   $form = array();
 
-  $form['uc_attribute_option_price_format'] = array('#type' => 'radios',
+  $form['uc_attribute_option_price_format'] = array(
+    '#type' => 'radios',
     '#title' => t('Option price format'),
     '#default_value' => variable_get('uc_attribute_option_price_format', 'adjustment'),
     '#options' => array('none' => t('Do not display'),
       'adjustment' => t('Display price adjustment'),
       'total' => t('Display total price'),
     ),
-    '#description' => t('Formats the price in the attribute selection form when the customer adds a product to their cart. The total price will only be displayed on products with only one price affecting attribute.'),
+    '#description' => t('Determines how price variations are displayed to the customer.  Prices may be displayed directly next to each attribute option in the attribute selection form either as a total price for the product with that option or as an adjustment (+ or -) showing how that option affects the product base price.  However, the total price will not be displayed if a product has more than one attribute that can affect the price.'),
   );
 
   return system_settings_form($form);
 }
 
 /**
- * Display options and the modifications to products they represent.
+ * Displays options and the modifications to products they represent.
  *
+ * @see uc_attribute_options_form_validate()
+ * @see uc_attribute_options_form_submit()
  * @ingroup forms
- * @see
- *   uc_attribute_options_form_validate()
- *   uc_attribute_options_form_submit()
  */
 function uc_attribute_options_form($form_state, $attribute) {
   $form = array();
@@ -222,6 +352,8 @@ function uc_attribute_options_form($form_state, $attribute) {
       'attribute' => $attribute,
     ),
   );
+
+  $form['options'] = array();
 
   // Loop through all the options on an attribute.
   foreach ($attribute->options as $key => $data) {
@@ -271,6 +403,12 @@ function uc_attribute_options_form($form_state, $attribute) {
   return $form;
 }
 
+/**
+ * Form submission handler for uc_attribute_options_form().
+ *
+ * @see uc_attribute_options_form()
+ * @see uc_object_options_form_submit()
+ */
 function uc_attribute_options_form_submit($form, &$form_state) {
   foreach ($form_state['values']['options'] as $oid => $option) {
     db_query("UPDATE {uc_attribute_options} SET ordering = %d WHERE oid = %d", $option['ordering'], $oid);
@@ -280,7 +418,7 @@ function uc_attribute_options_form_submit($form, &$form_state) {
 }
 
 /**
- * Format an attribute and its options.
+ * Formats an attribute and its options.
  *
  * @ingroup themeable
  */
@@ -325,9 +463,9 @@ function theme_uc_attribute_options_form($form) {
 /**
  * Form builder for attribute options.
  *
- * @ingroup forms
  * @see uc_attribute_option_form_validate()
  * @see uc_attribute_option_form_submit()
+ * @ingroup forms
  */
 function uc_attribute_option_form($form_state, $attribute, $option = NULL) {
   // If we got a bunk attribute, kick out an error message.
@@ -344,6 +482,13 @@ function uc_attribute_option_form($form_state, $attribute, $option = NULL) {
     drupal_set_title(t('Edit option: %name', array('%name' => $option->name)));
   }
   else {
+    $option = new stdClass();
+    $option->name = '';
+    $option->ordering = 0;
+    $option->cost = 0;
+    $option->price = 0;
+    $option->weight = 0;
+
     drupal_set_title(t('Options for %name', array('%name' => $attribute->name)));
   }
 
@@ -357,6 +502,7 @@ function uc_attribute_option_form($form_state, $attribute, $option = NULL) {
   );
   $form['ordering'] = array(
     '#type' => 'weight',
+    '#delta' => 50,
     '#title' => t('List position'),
     '#description' => t('Options will be listed sorted by this value and then by their name.<br />May be overridden at the product level.'),
     '#default_value' => isset($option->ordering) ? $option->ordering : 0,
@@ -387,7 +533,15 @@ function uc_attribute_option_form($form_state, $attribute, $option = NULL) {
     '#default_value' => $option->weight,
     '#weight' => 3,
   );
-
+  if (isset($form['oid'])) {
+    $form['bulk_update'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Update existing products?'),
+      '#description' => t('If selected, existing products and product classes with this attribute will be updated with the values on this page.<br /><em><strong>Warning:</strong> any option adjustments set at the product level will be overridden!</em>'),
+      '#default_value' => 0,
+      '#weight' => 4,
+    );
+  }
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Submit'),
@@ -399,9 +553,10 @@ function uc_attribute_option_form($form_state, $attribute, $option = NULL) {
 }
 
 /**
- * Validate number formats.
+ * Validates number formats.
  *
  * @see uc_attribute_option_form()
+ * @see uc_attribute_option_form_submit()
  */
 function uc_attribute_option_form_validate($form, &$form_state) {
   $pattern = '/^-?\d*(\.\d*)?$/';
@@ -418,12 +573,16 @@ function uc_attribute_option_form_validate($form, &$form_state) {
 }
 
 /**
- * @see uc_attribute_option_form().
+ * Form submission handler for uc_attribute_option_form().
+ *
+ * @see uc_attribute_option_form()
+ * @see uc_attribute_option_form_validate()
  */
 function uc_attribute_option_form_submit($form, &$form_state) {
   if (!isset($form_state['values']['oid'])) {
     db_query("INSERT INTO {uc_attribute_options} (aid, name, cost, price, weight, ordering) VALUES (%d, '%s', %f, %f, %f, %d)",
       $form_state['values']['aid'], $form_state['values']['name'], $form_state['values']['cost'], $form_state['values']['price'], $form_state['values']['weight'], $form_state['values']['ordering']);
+    $form_state['values']['oid'] = db_last_insert_id('uc_attribute_options', 'oid');
     drupal_set_message(t('Created new option %option.', array('%option' => $form_state['values']['name'])));
     watchdog('uc_attribute', 'Created new option %option.', array('%option' => $form_state['values']['name']), WATCHDOG_NOTICE, 'admin/store/attributes/'. $form_state['values']['aid'] .'/options/add');
     $form_state['redirect'] = 'admin/store/attributes/'. $form_state['values']['aid'] .'/options/add';
@@ -432,13 +591,23 @@ function uc_attribute_option_form_submit($form, &$form_state) {
     db_query("UPDATE {uc_attribute_options} SET name = '%s', cost = %f, price = %f, weight = %f, ordering = %d WHERE aid = %d AND oid = %d",
       $form_state['values']['name'], $form_state['values']['cost'], $form_state['values']['price'], $form_state['values']['weight'], $form_state['values']['ordering'], $form_state['values']['aid'], $form_state['values']['oid']);
     drupal_set_message(t('Updated option %option.', array('%option' => $form_state['values']['name'])));
-    watchdog('uc_attribute', 'Updated option %option.', array('%option' => $form_state['values']['name']), WATCHDOG_NOTICE, 'admin/store/attributes/'. $form_state['values']['aid'] .'/options/'. $form_state['values']['oid']);
+    if ($form_state['values']['bulk_update']) {
+      db_query("UPDATE {uc_product_options} SET cost = '%f', price = '%f', weight = '%f', ordering = '%d' WHERE oid = '%d'",
+        $form_state['values']['cost'], $form_state['values']['price'], $form_state['values']['weight'], $form_state['values']['ordering'], $form_state['values']['oid']);
+      db_query("UPDATE {uc_class_attribute_options} SET cost = '%f', price = '%f', weight = '%f', ordering = '%d' WHERE oid = '%d'",
+        $form_state['values']['cost'], $form_state['values']['price'], $form_state['values']['weight'], $form_state['values']['ordering'], $form_state['values']['oid']);
+      drupal_set_message(t('Bulk updates applied to all products and classes which have this attribute.'));
+      watchdog('uc_attribute', 'Updated option %option for all products and classes.', array('%option' => $form_state['values']['name']), WATCHDOG_NOTICE, 'admin/store/attributes/'. $form_state['values']['aid'] .'/options/'. $form_state['values']['oid']);
+    }
+    else {
+      watchdog('uc_attribute', 'Updated option %option.', array('%option' => $form_state['values']['name']), WATCHDOG_NOTICE, 'admin/store/attributes/'. $form_state['values']['aid'] .'/options/'. $form_state['values']['oid']);
+    }
     $form_state['redirect'] = 'admin/store/attributes/'. $form_state['values']['aid'] .'/options';
   }
 }
 
 /**
- * Confirm deletion of the given attribute option.
+ * Confirms deletion of the given attribute option.
  *
  * @see uc_attribute_option_delete_confirm_submit()
  */
@@ -461,7 +630,9 @@ function uc_attribute_option_delete_confirm($form_state, $attribute, $option) {
 }
 
 /**
- * @see uc_attribute_option_delete_confirm().
+ * Form submission handler for uc_attribute_option_delete_confirm().
+ *
+ * @see uc_attribute_option_delete_confirm()
  */
 function uc_attribute_option_delete_confirm_submit($form, &$form_state) {
   if ($form_state['values']['confirm']) {
@@ -477,10 +648,10 @@ function uc_attribute_option_delete_confirm_submit($form, &$form_state) {
 /**
  * Form to associate attributes with products or classes.
  *
+ * @see uc_object_attributes_form_submit()
+ * @see uc_object_attributes_form_reset()
+ * @see theme_uc_object_attributes_form()
  * @ingroup forms
- * @see
- *   theme_uc_object_attributes_form()
- *   uc_object_attributes_form_submit()
  */
 function uc_object_attributes_form($form_state, $object, $type, $view = 'overview') {
   switch ($type) {
@@ -505,16 +676,14 @@ function uc_object_attributes_form($form_state, $object, $type, $view = 'overvie
   }
 
   $used_aids = array();
-  $used_labels = array();
   foreach ($attributes as $attribute) {
     $used_aids[] = $attribute->aid;
-    if (!empty($attribute->label)) {
-      $used_labels[] = $attribute->label;
-    }
   }
 
   if ($view == 'overview') {
     $form['#tree'] = TRUE;
+
+    $form['attributes'] = array();
 
     $context = array(
       'revision' => 'themed',
@@ -522,7 +691,7 @@ function uc_object_attributes_form($form_state, $object, $type, $view = 'overvie
     );
     if (count($attributes) > 0) {
       foreach ($attributes as $attribute) {
-        $option = $attribute->options[$attribute->default_option];
+        $option = isset($attribute->options[$attribute->default_option]) ? $attribute->options[$attribute->default_option] : NULL;
         $context['subject'] = array(
           'attribute' => $attribute,
           'option' => $option,
@@ -550,8 +719,9 @@ function uc_object_attributes_form($form_state, $object, $type, $view = 'overvie
           ),
           'ordering' => array(
             '#type' => 'weight',
+            '#delta' => 25,
             '#default_value' => $attribute->ordering,
-            '#attributes' => array('class' => 'uc-attribute-table-weight'),
+            '#attributes' => array('class' => 'uc-attribute-table-ordering'),
           ),
           'display' => array(
             '#type' => 'select',
@@ -567,13 +737,21 @@ function uc_object_attributes_form($form_state, $object, $type, $view = 'overvie
         '#weight' => -2,
       );
     }
+    if ($type == 'product') {
+      $form['reset'] = array(
+        '#type' => 'submit',
+        '#value' => t('Reset to defaults'),
+        '#submit' => array('uc_object_attributes_form_reset'),
+        '#weight' => -1,
+      );
+    }
   }
   elseif ($view == 'add') {
     // Get list of attributes not already assigned to this node or class.
     $unused_attributes = array();
     $result = db_query("SELECT a.aid, a.name, a.label FROM {uc_attributes} AS a LEFT JOIN {uc_attribute_options} AS ao ON a.aid = ao.aid GROUP BY a.aid, a.name, a.label ORDER BY a.name");
     while ($attribute = db_fetch_object($result)) {
-      if (!in_array($attribute->aid, $used_aids) && !in_array($attribute->label, $used_labels)) {
+      if (!in_array($attribute->aid, $used_aids)) {
         $unused_attributes[$attribute->aid] = $attribute->name;
       }
     }
@@ -612,10 +790,10 @@ function uc_object_attributes_form($form_state, $object, $type, $view = 'overvie
 }
 
 /**
- * Display the formatted attribute form.
+ * Displays the formatted attribute form.
  *
- * @ingroup themeable
  * @see uc_object_attributes_form()
+ * @ingroup themeable
  */
 function theme_uc_object_attributes_form($form) {
   $output = '';
@@ -647,7 +825,7 @@ function theme_uc_object_attributes_form($form) {
       );
     }
 
-    drupal_add_tabledrag('uc-attribute-table', 'order', 'sibling', 'uc-attribute-table-weight');
+    drupal_add_tabledrag('uc-attribute-table', 'order', 'sibling', 'uc-attribute-table-ordering');
     $output = theme('table', $header, $rows, array('id' => 'uc-attribute-table'));
   }
   else {
@@ -662,6 +840,8 @@ function theme_uc_object_attributes_form($form) {
 }
 
 /**
+ * Form submission handler for uc_object_attributes_form().
+ *
  * @see uc_object_attributes_form()
  */
 function uc_object_attributes_form_submit($form, &$form_state) {
@@ -678,6 +858,8 @@ function uc_object_attributes_form_submit($form, &$form_state) {
     $sql_type = "'%s'";
   }
 
+  $changed = FALSE;
+
   if ($form_state['values']['view'] == 'overview' && is_array($form_state['values']['attributes'])) {
     foreach ($form_state['values']['attributes'] as $aid => $attribute) {
       if ($attribute['remove']) {
@@ -689,7 +871,7 @@ function uc_object_attributes_form_submit($form, &$form_state) {
       }
     }
 
-    if (count($remove_aids) > 0) {
+    if (isset($remove_aids)) {
       $id_value = $form_state['values']['id'];
       $remove_aids_value = implode(', ', $remove_aids);
 
@@ -740,13 +922,56 @@ function uc_object_attributes_form_submit($form, &$form_state) {
 }
 
 /**
+ * Reset product attributes to defaults for product class.
+ *
+ * @see uc_object_attributes_form_reset()
+ */
+function uc_object_attributes_form_reset($form, &$form_state) {
+  $form_state['redirect'] = array('node/'. $form_state['values']['id'] .'/edit/attributes/reset');
+}
+
+/**
+ * Confirmation form to reset product attributes to defaults.
+ *
+ * @see uc_object_attributes_form()
+ * @see uc_attribute_node_reset_confirm_submit()
+ */
+function uc_attribute_node_reset_confirm(&$form_state, $node) {
+  $form['nid'] = array(
+    '#type' => 'value',
+    '#value' => $node->nid,
+  );
+
+  return confirm_form($form,
+    t('Are you sure you want to reset the product attributes and options for %title?', array('%title' => $node->title)),
+    'node/'. $node->nid .'/edit/attributes',
+    t('This action cannot be undone.'),
+    t('Reset'),
+    t('Cancel')
+  );
+}
+
+/**
+ * Execute product attribute reset.
+ *
+ * @see uc_attribute_node_reset_confirm()
+ */
+function uc_attribute_node_reset_confirm_submit($form, &$form_state) {
+  $nid = $form_state['values']['nid'];
+  $node = node_load($nid);
+  uc_attribute_node_reset($node);
+  drupal_set_message(t('Product attributes and options reset to class defaults.'));
+
+  $form_state['redirect'] = 'node/'. $node->nid .'/edit/attributes';
+}
+
+/**
  * Form to assign and modify attribute options on products or classes.
  *
+ * @see uc_object_options_form_validate()
+ * @see uc_object_options_form_submit()
+ * @see theme_uc_object_options_form()
  * @ingroup forms
- * @see
- *   theme_uc_object_options_form()
- *   uc_object_options_form_validate()
- *   uc_object_options_form_submit()
  */
 function uc_object_options_form($form_state, $object, $type) {
   if ($type == 'product') {
@@ -858,12 +1083,14 @@ function uc_object_options_form($form_state, $object, $type) {
 }
 
 /**
- * Display the option form.
+ * Displays the option form.
  *
- * @ingroup themeable
  * @see uc_object_options_form()
+ * @ingroup themeable
  */
 function theme_uc_object_options_form($form) {
+  $output = '';
+
   $header = array(array('data' => '&nbsp;&nbsp;'. t('Options')) + theme('table_select_header_cell'), t('Default'), t('Cost'), t('Price'), t('Weight'), t('List position'));
   $table_id_num = $tables = 0;
 
@@ -931,7 +1158,9 @@ function theme_uc_object_options_form($form) {
  *   having a key of attribute ID and the following keys:
  *     #attribute_name - Attribute name
  *     #options - Array of option names
- * @return Themed set of attribute options.
+ *
+ * @return
+ *   Themed set of attribute options.
  */
 function theme_uc_product_attributes($element) {
   $option_rows = array();
@@ -959,22 +1188,25 @@ function theme_uc_product_attributes($element) {
 }
 
 /**
- * Make sure that all selected default options are enabled.
+ * Makes sure that all selected default options are enabled.
  *
  * @see uc_object_options_form()
+ * @see uc_object_options_form_submit()
  */
 function uc_object_options_form_validate($form, &$form_state) {
+  $error = FALSE;
+
   if (isset($form_state['values']['attributes'])) {
     foreach ($form_state['values']['attributes'] as $aid => $attribute) {
       $selected_opts = array();
-      if (is_array($attribute['options'])) {
+      if (isset($attribute['options'])) {
         foreach ($attribute['options'] as $oid => $option) {
           if ($option['select'] == 1) {
             $selected_opts[] = $oid;
           }
         }
       }
-      if (!empty($selected_opts) && !$form['attributes'][$aid]['default']['#disabled'] && !in_array($attribute['default'], $selected_opts)) {
+      if (!empty($selected_opts) && !isset($form['attributes'][$aid]['default']['#disabled']) && !in_array($attribute['default'], $selected_opts)) {
         form_set_error($attribute['default']);
         $error = TRUE;
       }
@@ -987,7 +1219,10 @@ function uc_object_options_form_validate($form, &$form_state) {
 }
 
 /**
+ * Form submission handler for uc_object_options_form().
+ *
  * @see uc_object_options_form()
+ * @see uc_object_options_form_validate()
  */
 function uc_object_options_form_submit($form, &$form_state) {
   if ($form_state['values']['type'] == 'product') {
@@ -1004,9 +1239,11 @@ function uc_object_options_form_submit($form, &$form_state) {
   }
 
   foreach ($form_state['values']['attributes'] as $attribute) {
-    db_query("UPDATE $attr_table SET default_option = %d WHERE $id = $sql_type AND aid = %d", $attribute['default'], $form_state['values']['id'], $attribute['aid']);
+    if (isset($attribute['default'])) {
+      db_query("UPDATE $attr_table SET default_option = %d WHERE $id = $sql_type AND aid = %d", $attribute['default'], $form_state['values']['id'], $attribute['aid']);
+    }
 
-    if (is_array($attribute['options'])) {
+    if (isset($attribute['options'])) {
       foreach ($attribute['options'] as $oid => $option) {
         db_query("DELETE FROM $opt_table WHERE $id = $sql_type AND oid = %d", $form_state['values']['id'], $oid);
 
@@ -1024,13 +1261,19 @@ function uc_object_options_form_submit($form, &$form_state) {
   }
 
   drupal_set_message(t('The !type options have been saved.', array('!type' => $form_state['values']['type'] == 'product' ? t('product') : t('product class'))));
+
+  if ($form_state['values']['type'] == 'product') {
+    // Clear the page and block caches.
+    cache_clear_all();
+  }
 }
 
 /**
- * Form builder to associate option combinations with mutations of a product's model number.
+ * Form builder to associate option combinations with mutations of a
+ * product's model number.
  *
- * @ingroup forms
  * @see uc_product_adjustments_form_submit()
+ * @ingroup forms
  */
 function uc_product_adjustments_form($form_state, $node) {
   drupal_set_title(check_plain($node->title));
@@ -1042,7 +1285,7 @@ function uc_product_adjustments_form($form_state, $node) {
   $query_from = " FROM";
   $query_where = " WHERE";
   $query_order = " ORDER BY";
-  $result = db_query("SELECT pa.nid, pa.aid, pa.ordering, pa.display, a.name, a.ordering, ao.aid, COUNT(po.oid) FROM {uc_product_attributes} AS pa LEFT JOIN {uc_attributes} AS a ON pa.aid = a.aid LEFT JOIN {uc_attribute_options} AS ao ON a.aid = ao.aid LEFT JOIN {uc_product_options} AS po ON ao.oid = po.oid AND po.nid = %d WHERE pa.nid = %d AND pa.display <> 3 GROUP BY ao.aid, pa.aid, a.name, pa.ordering, a.ordering, pa.nid HAVING count(po.oid) > 0 ORDER BY pa.ordering, a.ordering", $nid, $nid);
+  $result = db_query("SELECT pa.nid, pa.aid, pa.ordering, pa.display, a.name, a.ordering, ao.aid, COUNT(po.oid) FROM {uc_product_attributes} AS pa LEFT JOIN {uc_attributes} AS a ON pa.aid = a.aid LEFT JOIN {uc_attribute_options} AS ao ON a.aid = ao.aid LEFT JOIN {uc_product_options} AS po ON ao.oid = po.oid AND po.nid = %d WHERE pa.nid = %d AND pa.display <> 3 GROUP BY ao.aid, pa.aid, pa.display, a.name, pa.ordering, a.ordering, pa.nid HAVING count(po.oid) > 0 ORDER BY pa.ordering, a.ordering", $nid, $nid);
   $i = 1;
   $attribute_names = '';
   $full_attributes = array();
@@ -1089,7 +1332,7 @@ function uc_product_adjustments_form($form_state, $node) {
     $form['table']['head'] = array(
       '#prefix' => '<thead><tr>',
       '#suffix' => '</tr></thead>',
-      '#value' => $attribute_names .'<th>Alternate SKU</th>',
+      '#value' => $attribute_names .'<th>'. t('Alternate SKU') .'</th>',
       '#weight' => 0,
     );
     $form['table']['body'] = array(
@@ -1162,28 +1405,23 @@ function uc_product_adjustments_form($form_state, $node) {
 }
 
 /**
+ * Form builder for uc_product_adjustments_form().
+ *
  * @see uc_product_adjustments_form()
  */
 function uc_product_adjustments_form_submit($form, &$form_state) {
   foreach ($form_state['values']['body'] as $value) {
+    db_query("DELETE FROM {uc_product_adjustments} WHERE nid = %d AND combination = '%s'",
+      $form_state['values']['nid'], $value['combo_array']);
     if (!empty($value['model']) && $value['model'] != $form_state['values']['default']) {
-      db_query("UPDATE {uc_product_adjustments} SET model = '%s' WHERE nid = %d AND combination = '%s'",
-        $value['model'], $form_state['values']['nid'], $value['combo_array']);
-      if (!db_affected_rows()) {
-        db_query("INSERT INTO {uc_product_adjustments} (nid, combination, model) VALUES (%d, '%s', '%s')",
-          $form_state['values']['nid'], $value['combo_array'], $value['model']);
-      }
-    }
-    else {
-      db_query("DELETE FROM {uc_product_adjustments} WHERE nid = %d AND combination = '%s'",
-        $form_state['values']['nid'], $value['combo_array']);
+      db_query("INSERT INTO {uc_product_adjustments} (nid, combination, model) VALUES (%d, '%s', '%s')",
+        $form_state['values']['nid'], $value['combo_array'], $value['model']);
     }
   }
   drupal_set_message(t('Product adjustments have been saved.'));
   $goto = array($_GET['q']);
-  if ($_GET['page']) {
+  if (isset($_GET['page'])) {
     $goto[] = 'page='. $_GET['page'];
   }
   $form_state['redirect'] = $goto;
 }
-

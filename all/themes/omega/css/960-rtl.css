@@ -22,16 +22,7 @@
 .grid-13,
 .grid-14,
 .grid-15,
-.grid-16,
-.grid-17,
-.grid-18,
-.grid-19,
-.grid-20,
-.grid-21,
-.grid-22,
-.grid-23,
-.grid-24
-{
+.grid-16 {
   float: right;
 }
 
@@ -113,9 +104,7 @@
 ----------------------------------------------------------------------------------------------------*/
 
 .container-12 .prefix-3,
-.container-16 .prefix-4,
-.container-24 .prefix-4
-{
+.container-16 .prefix-4 {
   padding-right: 240px;
 }
 

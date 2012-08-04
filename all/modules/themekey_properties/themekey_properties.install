@@ -1,9 +1,8 @@
 <?php
-// $Id: themekey_properties.install,v 1.1.2.4 2010/01/12 19:45:21 mkalkbrenner Exp $
 
 /**
  * @file
- * doesn't contain a database schema but cleans up some drupal variables
+ * doesn't contain a database schema but cleans up some Drupal variables
  *
  * @author Markus Kalkbrenner | Cocomore AG
  *   @see http://drupal.org/user/124705

@@ -1,5 +1,4 @@
 <?php
-// $Id: uc_cart.install,v 1.7.2.9 2009/09/21 14:34:47 islandusurper Exp $
 
 /**
  * @file
@@ -7,12 +6,13 @@
  */
 
 /**
- * Implementation of hook_schema().
+ * Implements hook_schema().
  */
 function uc_cart_schema() {
   $schema = array();
 
   $schema['uc_cart_products'] = array(
+    'description' => 'Stores products placed in shopping carts.',
     'fields' => array(
       'cart_item_id' => array(
         'description' => 'Unique identifier for cart item.',
@@ -21,30 +21,34 @@ function uc_cart_schema() {
         'not null' => TRUE),
 
       'cart_id' => array(
+        'description' => 'A user-specific cart ID. For authenticated users, their {users}.uid. For anonymous users, a token.',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
         'default' => '0',
       ),
       'nid' => array(
+        'description' => 'The {node}.nid of the product.',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 0,
       ),
       'qty' => array(
+        'description' => 'The number of this product in the cart.',
         'type' => 'int',
-        'size' => 'small',
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 0,
       ),
       'changed' => array(
+        'description' => 'The Unix timestamp indicating the time the product in the cart was changed.',
         'type' => 'int',
         'not null' => TRUE,
         'default' => 0,
       ),
       'data' => array(
+        'description' => 'A serialized array of extra cart data for the product.',
         'type' => 'text',
         'serialize' => TRUE,
       ),
@@ -59,14 +63,14 @@ function uc_cart_schema() {
 }
 
 /**
- * Implementation of hook_install().
+ * Implements hook_install().
  */
 function uc_cart_install() {
   drupal_install_schema('uc_cart');
 }
 
 /**
- * Implementation of hook_uninstall().
+ * Implements hook_uninstall().
  */
 function uc_cart_uninstall() {
   drupal_uninstall_schema('uc_cart');
@@ -168,6 +172,38 @@ function uc_cart_update_6201() {
   if (empty($_SESSION['messages']['error'])) {
     unset($_SESSION['messages']['error']);
   }
+
+  return $ret;
+}
+
+/**
+ * Unify cart block title setting.
+ */
+function uc_cart_update_6202() {
+  $ret = array();
+
+  if ($title = variable_get('uc_cart_block_title', '')) {
+    $ret[] = update_sql("UPDATE {blocks} SET title = '" . db_escape_string($title) . "' WHERE module = 'uc_cart' AND delta = '0'");
+  }
+
+  variable_del('uc_cart_block_title');
+
+  return $ret;
+}
+
+/**
+ * Increase maximum cart item quantity.
+ */
+function uc_cart_update_6203() {
+  $ret = array();
+
+  db_change_field($ret, 'uc_cart_products', 'qty', 'qty', array(
+    'description' => 'The number of this product in the cart.',
+    'type' => 'int',
+    'unsigned' => TRUE,
+    'not null' => TRUE,
+    'default' => 0,
+   ));
 
   return $ret;
 }

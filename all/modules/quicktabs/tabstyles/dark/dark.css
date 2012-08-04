@@ -21,7 +21,7 @@ ul.quicktabs_tabs.quicktabs-style-dark a:hover{
 }
 ul.quicktabs_tabs.quicktabs-style-dark li{
   padding:2px 5px;
-  margin:0;
+  margin:0 3px 0 0;
   position:relative;
 }
 ul.quicktabs_tabs.quicktabs-style-dark li:hover{

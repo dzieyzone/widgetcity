@@ -1,5 +1,4 @@
 <?php
-// $Id: uc_catalog.pages.inc,v 1.1.2.12 2009/07/21 14:37:21 islandusurper Exp $
 
 /**
  * @file
@@ -71,7 +70,7 @@ function theme_uc_catalog_browse($tid = 0) {
     if ($child->nodes) {
       $cell_link = $image .'<strong>'. l($child->name, uc_catalog_path($child)) .'</strong>';
       if (variable_get('uc_catalog_show_subcategories', TRUE)) {
-        $cell_link .= "<br/><span>". implode(', ', $grandchildren) ."</span>\n";
+        $cell_link .= "<br /><span>". implode(', ', $grandchildren) ."</span>\n";
       }
       $child_list[] = $cell_link;
     }
@@ -134,7 +133,7 @@ function theme_uc_catalog_browse($tid = 0) {
     $row = array();
     $i = 1;
     foreach ($child_list as $cell) {
-      $row[] = array('data' => $cell, 'class' => 'category');
+      $row[] = array('data' => $cell, 'class' => 'category width-' . $columns);
       if ($i % $columns == 0) {
         $cat_rows[] = $row;
         $row = array();
@@ -143,7 +142,7 @@ function theme_uc_catalog_browse($tid = 0) {
     }
     if (count($row) > 0 && count($row) < $columns) {
       if (count($cat_rows) >= 1) {
-        $row = array_merge($row, array_fill(count($row), $columns - count($row), array('data' => '&nbsp;', 'class' => 'category')));
+        $row = array_merge($row, array_fill(count($row), $columns - count($row), array('data' => '&nbsp;', 'class' => 'category width-' . $columns)));
       }
       $cat_rows[] = $row;
     }
@@ -153,4 +152,3 @@ function theme_uc_catalog_browse($tid = 0) {
 
   return $output;
 }
-

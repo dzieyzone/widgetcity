@@ -1,5 +1,4 @@
 <?php
-// $Id: themekey_base.inc,v 1.16.2.5 2010/08/28 08:31:38 mkalkbrenner Exp $
 
 /**
  * @file
@@ -25,13 +24,19 @@
  */
 function themekey_invoke_modules($hook) {
   $return = array();
-  foreach (variable_get('themekey_modules', array('themekey.node')) as $module) {
-    if (is_readable(drupal_get_path('module', 'themekey') .'/modules/'. $module .'.inc')) {
-      require_once(drupal_get_path('module', 'themekey') .'/modules/'. $module .'.inc');
+  foreach (variable_get('themekey_modules', array('node')) as $module) {
+    if (module_exists($module) && is_readable(drupal_get_path('module', 'themekey') .'/modules/themekey.'. $module .'.inc')) {
+      require_once(drupal_get_path('module', 'themekey') .'/modules/themekey.'. $module .'.inc');
+
+      $function = 'themekey_' . $module . '_' . $hook;
+      if (function_exists($function)) {
+        $return = array_merge_recursive($return, $function());
+      }
     }
-    $function = str_replace('.', '_', $module) .'_'. $hook;
-    if (function_exists($function)) {
-      $return = array_merge_recursive($return, $function());
+    else {
+      // seems like a module has been deactivated => update variable 'themekey_modules'
+      module_load_include('inc', 'themekey', 'themekey_build');
+      themekey_scan_modules();
     }
   }
 
@@ -51,7 +56,7 @@ function themekey_invoke_modules($hook) {
  *
  * @param $parameters
  *   reference to an array containing all
- *   ThemeKey properties an their values
+ *   ThemeKey properties and their values
  *
  * @return
  *   boolean
@@ -63,14 +68,15 @@ function themekey_match_path($condition, &$parameters) {
     return FALSE;
   }
 
+  $get_q = $get_q_to_split = themekey_get_q();
+
   if (!variable_get('themekey_path_case_sensitive', 0)) {
     $condition['value'] = drupal_strtolower($condition['value']);
+    $get_q_to_split = drupal_strtolower($get_q_to_split);
   }
 
   $condition_parts = explode('/', $condition['value']);
-
-  $get_q = themekey_get_q();
-  $get_q_parts = explode('/', $get_q);
+  $get_q_parts = explode('/', $get_q_to_split);
 
   $wildcards = themekey_match_path_parts($get_q_parts, $condition_parts);
   if (FALSE === $wildcards && module_exists('path')) {
@@ -112,10 +118,10 @@ function themekey_match_path($condition, &$parameters) {
  * wildcards "%" and "#".
  *
  * @param $path_parts
- *   array containg single parts of a path
+ *   array containing single parts of a path
  *
  * @param $condition_parts
- *   array containg single parts of a path
+ *   array containing single parts of a path
  *   whereas a part could be a wildcard
  *
  * @return
@@ -146,7 +152,7 @@ function themekey_match_path_parts($path_parts, $condition_parts) {
       return FALSE;
     }
 
-    if ($part == $path_parts[$key]) {
+    if ($part == $path_parts[$key] || $part == urldecode($path_parts[$key]) || $part == rawurldecode($path_parts[$key])) {
       continue;
     }
 
@@ -160,7 +166,7 @@ function themekey_match_path_parts($path_parts, $condition_parts) {
 
 /**
  * Assigns global parameters' values to ThemeKey properties.
- * Therefor it calls hook_themekey_global()
+ * Therefore, it calls hook_themekey_global()
  *
  * @return
  *   associative array containing some
@@ -221,7 +227,7 @@ function themekey_match_rules() {
  *
  * @param $parameters
  *   reference to an array containing all
- *   ThemeKey properties an their values
+ *   ThemeKey properties and their values
  *
  * @param $parent
  *   id of parent rule
@@ -319,7 +325,13 @@ function themekey_match_condition($condition, &$parameters) {
     }
 
     if ('drupal:path' == $condition['property']) {
-      return themekey_match_path($condition, $parameters);
+      $match_path = themekey_match_path($condition, $parameters);
+      if ($condition['operator'] == '=') {
+        return $match_path;
+      }
+      // only '=' and '!' are allowed
+      // @see themekey_validator_drupal_path()
+      return !$match_path;
     }
 
     $value = themekey_property_value($parameters, $condition['property']);
@@ -341,25 +353,34 @@ function themekey_match_condition($condition, &$parameters) {
           // Supported operators for condition check:
           // smaller ('<'), greater ('>'), equal ('='), not equal ('!'), regex match ('~')
           if ($condition['operator'] == '<' && $single_value >= $condition['value']) {
-            return FALSE;
+            return FALSE; // all values need to not match
           }
           elseif ($condition['operator'] == '>' && $single_value <= $condition['value']) {
-            return FALSE;
+            return FALSE; // all values need to not match
           }
           elseif ($condition['operator'] == '<=' && $single_value > $condition['value']) {
-            return FALSE;
+            return FALSE; // all values need to not match
           }
           elseif ($condition['operator'] == '>=' && $single_value < $condition['value']) {
-            return FALSE;
+            return FALSE; // all values need to not match
           }
           elseif ($condition['operator'] == '=' && $single_value == $condition['value']) {
             return TRUE;
           }
           elseif ($condition['operator'] == '!' && $single_value == $condition['value']) {
-            return FALSE;
+            return FALSE; // all values need to not match
+          }
+          elseif ($condition['operator'] == '*' && strpos($single_value, $condition['value']) !== FALSE) {
+            return TRUE;
+          }
+          elseif ($condition['operator'] == '!*' && strpos($single_value, $condition['value']) !== FALSE) {
+            return FALSE; // all values need to not match
           }
           elseif ($condition['operator'] == '~' && preg_match($condition['value'], $single_value)) {
             return TRUE;
+          }
+          elseif ($condition['operator'] == '!~' && preg_match($condition['value'], $single_value)) {
+            return FALSE; // all values need to not match
           }
         }
         else {
@@ -368,7 +389,7 @@ function themekey_match_condition($condition, &$parameters) {
         }
       }
 
-      if ($condition['operator'] == '=' || $condition['operator'] == '~') {
+      if ($condition['operator'] == '=' || $condition['operator'] == '~' || $condition['operator'] == '*') {
         // no value matched
         return FALSE;
       }
@@ -394,14 +415,14 @@ function themekey_match_condition($condition, &$parameters) {
  *
  * @param $parameters
  *   reference to an array containing all
- *   ThemeKey properties an their values
+ *   ThemeKey properties and their values
  *
  * @param $property
  *   the name of the property as string
  *
  * @return
  *   The value of the property:
- *   - string i it's a single value
+ *   - string if it's a single value
  *   - array of strings if there're multiple values
  *   - NULL if no value
  */
@@ -486,17 +507,15 @@ function themekey_check_theme_enabled($theme, $settings_page = FALSE) {
 
   if ($settings_page) {
     if (!$displayed_error) {
-      drupal_set_message(t("Your current configuration of theme rules uses at least one theme that is not enabled. Nevertheless this configuration is stored but affected rules won't be applied until the targeted theme will be enabled at !build_themes.",
+      drupal_set_message(t("Your current configuration of theme rules uses at least one theme that is not enabled. Nevertheless, this configuration is stored, but affected rules won't be applied until the targeted theme is enabled at !build_themes.",
         array('!build_themes' => l(t('!path', array('!path' => 'admin/build/themes')), 'admin/build/themes'))), 'error');
       $displayed_error = TRUE;
     }
   }
   else {
-    global $user;
-
-    if (!$warned && 1 == $user->uid) {
-      themekey_set_debug_message('A matching Theme Switching Rule to select theme %theme was not applied because this theme is disabled. You can enable this theme at !build_themes or remove this Theme Switching Rule at !themekey_properties or edit current node if the theme was selected using ThemeKey UI.',
-        array('%theme' => $theme, '!build_themes' => l(t('!path', array('!path' => 'admin/build/themes')), 'admin/build/themes'), '!themekey_properties' => l(t('!path', array('!path' => 'admin/settings/themekey/properties')), 'admin/settings/themekey/properties')));
+    if (!$warned && variable_get('themekey_debug_trace_rule_switching', FALSE)) {
+      themekey_set_debug_message('A matching Theme Switching Rule to select theme %theme was not applied because this theme is disabled. You can enable this theme at !build_themes, remove this Theme Switching Rule at !themekey_properties, or edit current node if the theme was selected using ThemeKey UI.',
+      array('%theme' => $theme, '!build_themes' => l(t('!path', array('!path' => 'admin/build/themes')), 'admin/build/themes'), '!themekey_properties' => l(t('!path', array('!path' => 'admin/settings/themekey/properties')), 'admin/settings/themekey/properties')));
       $warned = TRUE;
     }
   }

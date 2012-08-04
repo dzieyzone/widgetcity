@@ -1,5 +1,4 @@
 <?php
-// $Id: uc_roles.admin.inc,v 1.1.2.5 2009/07/21 14:37:19 islandusurper Exp $
 
 /**
  * @file
@@ -7,7 +6,7 @@
  */
 
 /**
- * Create the header for the table/pager.
+ * Creates the header for the table/pager.
  */
 function _uc_roles_expiration_header() {
   return array(
@@ -33,7 +32,7 @@ function uc_roles_expiration() {
   // Stick the expirations into the form.
   while ($row = db_fetch_object($result)) {
     $form['name'][$row->uid .' '. $row->rid] = array('#value' => theme('username', $row));
-    $form['role'][$row->uid .' '. $row->rid] = array('#value' => _uc_roles_get_name($row->rid));
+    $form['role'][$row->uid .' '. $row->rid] = array('#value' => check_plain(_uc_roles_get_name($row->rid)));
     $form['expiration'][$row->uid .' '. $row->rid] = array('#value' => format_date($row->expiration, 'small'));
     $form['operations'][$row->uid .' '. $row->rid] = array('#value' => l(t('delete'), 'admin/user/user/expiration/delete/'. $row->uid .'/'. $row->rid) .' '. l(t('edit'), 'user/'. $row->uid .'/edit', array('fragment' => 'role-expiration-'. $row->rid, 'query' => 'destination=admin%2Fuser%2Fuser%2Fexpiration')));
   }
@@ -42,7 +41,7 @@ function uc_roles_expiration() {
 }
 
 /**
- * Theme user role expiration page.
+ * Themes user role expiration page.
  *
  * @ingroup themeable
  */
@@ -74,8 +73,8 @@ function theme_uc_roles_expiration($form) {
 /**
  * Form builder for role expirations.
  *
- * @ingroup forms
  * @see uc_roles_deletion_form_submit()
+ * @ingroup forms
  */
 function uc_roles_deletion_form($form_id, $account, $rid) {
   $expiration = db_result(db_query("SELECT expiration FROM {uc_roles_expirations} WHERE uid = %d AND rid = %d", $account->uid, $rid));
@@ -106,6 +105,8 @@ function uc_roles_deletion_form($form_id, $account, $rid) {
 }
 
 /**
+ * Submission handler for uc_roles_deletion_form().
+ *
  * @see uc_roles_deletion_form()
  */
 function uc_roles_deletion_form_submit($form, &$form_state) {
@@ -113,4 +114,3 @@ function uc_roles_deletion_form_submit($form, &$form_state) {
 
   drupal_goto('admin/user/user/expiration');
 }
-

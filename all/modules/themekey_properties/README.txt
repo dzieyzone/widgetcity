@@ -1,4 +1,3 @@
-// $Id: README.txt,v 1.9.2.2 2010/03/22 15:44:52 mkalkbrenner Exp $
 
 ThemeKey Properties
 ===================
@@ -14,10 +13,10 @@ About
 =====
 
 "ThemeKey Properties" adds additional properties to ThemeKey module which
-could be found at http://drupal.org/project/themekey
+can be found at http://drupal.org/project/themekey
 
-"ThemeKey" itself provides an infrastructure to switch drupal themes by
-rules which might use such properties.
+"ThemeKey", itself, provides an infrastructure to switch Drupal themes according
+to rules which might use such properties.
 
 Additional Properties provided by "ThemeKey Properties":
  - drupal:base_path
@@ -49,7 +48,7 @@ ThemeKey Properties contains an additional module called
 a debug feature that shows the current values of all properties on
 every page including those properties provided by different modules.
 
-The debug values are clickable. If you do so you can easily start
+The debug values are clickable. If you do so, you can easily start
 creating a Theme Switching rule from this property and value.
 
 
@@ -61,7 +60,7 @@ Installation
   1.1 Install ThemeKey itself from http://drupal.org/project/themekey
 
   1.2 Place whole themekey_properties folder into your Drupal modules/
-      directory.
+      directory, or better, your sites/x/modules directory.
 
   1.3 Enable the "ThemeKey Properties" module at /admin/build/modules
 
@@ -71,7 +70,7 @@ Installation
   2.1 Install ThemeKey itself from http://drupal.org/project/themekey
 
   2.2 Place whole themekey_properties folder into your Drupal modules/
-      directory.
+      directory, or better, your sites/x/modules directory.
 
   2.3 Enable the "ThemeKey Properties" module at /admin/build/modules
   

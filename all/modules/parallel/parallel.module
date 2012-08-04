@@ -1,0 +1,195 @@
+<?php
+// $Id: parallel.module,v 1.1.2.10 2010/03/18 06:57:59 mikeytown2 Exp $
+
+/**
+ * @file
+ * Rewrites css & js src tags
+ */
+
+/**
+ * Implementation of hook_help().
+ *
+ * @param $path
+ *   A Drupal menu router path the help is being requested fo
+ * @param $arg
+ *   An array that corresponds to the return of the arg() function
+ *
+ * @return string
+ *   help info
+ */
+function parallel_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#parallel':
+      $output = '<p>'. t('Enable parallel downloads on the <a href="@performance">Performance settings</a> page.', array('@performance' => url('admin/settings/performance'))) .'</p>';
+      return $output;
+  }
+}
+
+/**
+ * Implementation of hook_form_alter().
+ *
+ * @param &$form
+ *   Nested array of form elements that comprise the form.
+ * @param $form_state
+ *   A keyed array containing the current state of the form.
+ * @param $form_id
+ *   String representing the name of the form itself. Typically this is the name of the function that generated the form.
+ */
+function parallel_form_alter(&$form, $form_state, $form_id) {
+  if ($form_id == 'system_performance_settings') {
+    $form['bandwidth_optimizations']['parallel_enabled'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Enable Parallel'),
+      '#default_value' => variable_get('parallel_enabled', TRUE),
+      '#weight' => -20,
+    );
+    $form['bandwidth_optimizations']['parallel_exit'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Use Hook Exit For CSS Replacement'),
+      '#default_value' => variable_get('parallel_exit', FALSE),
+      '#description' => t('If your using a recolorable theme, you should probably use this.'),
+      '#weight' => -19,
+    );
+    $form['bandwidth_optimizations']['parallel_domain_css'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Enter domain - CSS'),
+      '#default_value' => variable_get('parallel_domain_css', ''),
+      '#description'   => t('//data1.example.com'),
+      '#weight' => -18,
+    );
+    $form['bandwidth_optimizations']['parallel_domain_js'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Enter domain - JS'),
+      '#default_value' => variable_get('parallel_domain_js', ''),
+      '#description'   => t('//data2.example.com'),
+      '#weight' => -17,
+    );
+    $form['bandwidth_optimizations']['parallel_domain_img'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Enter domain - IMG'),
+      '#default_value' => variable_get('parallel_domain_img', ''),
+      '#description'   => t('//data3.example.com'),
+      '#weight' => -16,
+    );
+  }
+}
+
+/**
+ * Implementation of hook_theme_registry_alter().
+ *
+ * Make Parallel's page preprocess function run *after* everything else's,
+ * so that a theme can't call drupal_get_js() and mess everything up.
+ *
+ * @param &$theme_registry
+ *   The entire cache of theme registry information, post-processing.
+ */
+function parallel_theme_registry_alter(&$theme_registry) {
+  if (isset($theme_registry['page'])) {
+    // If parallel's preprocess function is there already, remove it.
+    if ($key = array_search('parallel_preprocess_page', $theme_registry['page']['preprocess functions'])) {
+      unset($theme_registry['page']['preprocess functions'][$key]);
+    }
+    // Now tack it on at the end so it runs after everything else.
+    $theme_registry['page']['preprocess functions'][] = 'parallel_preprocess_page';
+  }
+}
+
+/**
+ * Implementation of template_preprocess_page().
+ *
+ * @param &$variables
+ *   Array containing various page elements.
+ */
+function parallel_preprocess_page(&$variables) {
+  if (variable_get('parallel_enabled', TRUE)) {
+    if (variable_get('parallel_domain_css', '') != '') {
+      $variables['styles'] = str_replace(' href="/', ' href="' . variable_get('parallel_domain_css', '') . '/', $variables['styles']);
+    }
+    if (variable_get('parallel_domain_js', '') != '') {
+      $variables['scripts'] = str_replace(' src="/', ' src="' . variable_get('parallel_domain_js', '') . '/', $variables['scripts']);
+      $variables['closure'] = str_replace(' src="/', ' src="' . variable_get('parallel_domain_js', '') . '/', $variables['closure']);
+    }
+    if (variable_get('parallel_domain_img', '') != '') {
+      $skip_keys = array('styles', 'scripts', 'closure', 'zebra', 'id', 'directory', 'layout', 'head_title', 'base_path', 'front_page', 'head', 'body_clases');
+      foreach ($variables as $key => $value) {
+        if (!in_array($key, $skip_keys) && is_string($value) && !empty($value)) {
+          $variables[$key] = parallel_image_replace($value, variable_get('parallel_domain_img', ''));
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Replace src with subdomain in html.
+ *
+ * @param $html
+ *   String containing valid html
+ * @param $subdomain
+ *   subdomain
+ *
+ * @return string
+ *   modified html
+ */
+function parallel_image_replace($html, $subdomain) {
+  $host_re = array(
+    '(https?\:)?\/\/' . preg_quote($_SERVER['SERVER_NAME']) . '\/',
+    '(https?\:)?\/\/' . preg_quote($_SERVER['HTTP_HOST']) . '\/',
+    // manually add domains here
+    //'(https?\:)?\/\/' .preg_quote('manual.domain.com'). '\/',
+  );
+  $pattern = '/(<img\s+|<img\s+[^>]*\s+)src\s*=\s*(\'|")?(\/([^\/])|' . implode('|', $host_re) . ')/i';
+  $replacement = '$1 src=$2' . $subdomain . '/$4';
+  return preg_replace($pattern, $replacement, $html);
+}
+
+
+/**
+ * Implementation of hook_init().
+ *
+ * Start the output buffer.
+ */
+function parallel_init() {
+  if (   variable_get('parallel_enabled', FALSE)
+      && variable_get('parallel_exit', FALSE)
+      && variable_get('parallel_domain_css', '') != ''
+      ) {
+    ob_start();
+  }
+}
+
+/**
+ * Implementation of hook_exit().
+ *
+ * Alt way of getting the css filenames
+ */
+function parallel_exit() {
+  // Ensure we are not serving a cached page; drupal_set_content is the first
+  // function in common.inc which is included in the full drupal bootstrap.
+  if (   variable_get('parallel_enabled', FALSE)
+      && variable_get('parallel_exit', FALSE)
+      && variable_get('parallel_domain_css', '') != ''
+      && function_exists('drupal_set_content')
+      ) {
+    $buffer = ob_get_contents();
+    ob_end_clean();
+
+    // Extract external css files from html document
+    $css_old = array();
+    $css = explode('<link type="text/css" rel="stylesheet" ', $buffer);
+    array_shift($css);
+    foreach ($css as $key => $value) {
+      // Only grab the first string, containing the css filename.
+      $css_old[$key] = '<link type="text/css" rel="stylesheet" ' . array_shift(explode(' />', $value)) . ' />';
+      $css[$key] = str_replace(' href="/', ' href="' . variable_get('parallel_domain_css', '') . '/', $css_old[$key]);
+      $buffer = str_replace($css_old[$key], $css[$key], $buffer);
+    }
+    watchdog('parallel', htmlentities(print_r($css_old, TRUE) . "\n\n\n\n" . print_r($css, TRUE)));
+
+    ob_start();
+    print $buffer;
+    if (variable_get('cache', CACHE_DISABLED) != CACHE_DISABLED) {
+      page_set_cache();
+    }
+  }
+}

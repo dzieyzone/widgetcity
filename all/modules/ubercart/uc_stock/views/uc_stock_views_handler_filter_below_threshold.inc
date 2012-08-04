@@ -1,12 +1,15 @@
 <?php
-// $Id: uc_stock_views_handler_filter_below_threshold.inc,v 1.1.2.1 2009/07/29 19:54:20 islandusurper Exp $
 
 /**
  * @file
- * Views handler: Filter on comparison of stock level to threshold.
+ * Views handler: Filters on comparison of stock level to threshold.
  */
 
 class uc_stock_views_handler_filter_below_threshold extends views_handler_filter_boolean_operator {
+
+  /**
+   * Overrides views_handler_field::query().
+   */
   function query() {
     $this->ensure_my_table();
     $this->query->add_field($this->table_alias, 'stock');

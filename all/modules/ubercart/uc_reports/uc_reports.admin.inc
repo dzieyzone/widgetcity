@@ -1,5 +1,4 @@
 <?php
-// $Id: uc_reports.admin.inc,v 1.1.2.14 2009/10/20 20:58:07 islandusurper Exp $
 
 /**
  * @file
@@ -43,9 +42,10 @@ function uc_reports_customers() {
   $address_preference = variable_get('uc_customer_list_address', 'billing');
   $first_name = ($address_preference == 'billing') ? 'billing_first_name' : 'delivery_first_name';
   $last_name = ($address_preference == 'billing') ? 'billing_last_name' : 'delivery_last_name';
-  $page = (!is_null($_GET['page'])) ? intval($_GET['page']) : 0;
-  $page_size = (!is_null($_GET['nopage'])) ? UC_REPORTS_MAX_RECORDS : variable_get('uc_reports_table_size', 30);
+  $page = isset($_GET['page']) ? intval($_GET['page']) : 0;
+  $page_size = isset($_GET['nopage']) ? UC_REPORTS_MAX_RECORDS : variable_get('uc_reports_table_size', 30);
   $order_statuses = _uc_reports_order_statuses();
+  $rows = array();
   $csv_rows = array();
 
   $header = array(
@@ -86,20 +86,20 @@ function uc_reports_customers() {
     $customer_number = ($page * variable_get('uc_reports_table_size', 30)) + (count($rows) + 1);
     $customer_order_name = (!empty($customer[$last_name]) || !empty($customer[$first_name])) ? $customer[$last_name] .', '. $customer[$first_name] : $customer['name'];
     $customer_name = $customer['name'];
-    $orders = (!empty($customer['orders']) ? $customer['orders'] : 0);
-    $products = (!empty($customer['products']) ? $customer['products'] : 0);
+    $orders = !empty($customer['orders']) ? $customer['orders'] : 0;
+    $products = !empty($customer['products']) ? $customer['products'] : 0;
     $total_revenue = uc_price($customer['total'], $context);
     $average_revenue = uc_price($customer['average'], $context);
     $rows[] = array(
       array('data' => $customer_number),
-      array('data' => $name, 'nowrap' => 'nowrap'),
-      array('data' => l($customer_name, 'user/'. $customer['uid']), 'nowrap' => 'nowrap'),
+      array('data' => $name),
+      array('data' => l($customer_name, 'user/'. $customer['uid'])),
       array('data' => $orders),
       array('data' => $products),
-      array('data' => $total_revenue, 'nowrap' => 'nowrap'),
-      array('data' => $average_revenue, 'nowrap' => 'nowrap'),
+      array('data' => $total_revenue),
+      array('data' => $average_revenue),
     );
-    $csv_rows[] = array($customer_number, $customer_order_name, $customer_name, $orders, $products, $total_revenue, $average_revenue);
+    $csv_rows[] = array($customer_number, $customer_order_name, $customer_name, $orders, $products, $customer['total'], $customer['average']);
   }
   if (empty($rows)) {
     $rows[] = array(array('data' => t('No customers found'), 'colspan' => count($header)));
@@ -107,8 +107,8 @@ function uc_reports_customers() {
   $csv_data = uc_reports_store_csv('uc_customers', $csv_rows);
 
   $output = theme('table', $header, $rows, array('width' => '100%', 'class' => 'uc-sales-table'));
-  $output .= theme_pager(NULL, $page_size);
-  $output .= '<div class="uc-reports-links">'. l(t('Export to CSV file.'), 'admin/store/reports/getcsv/'. $csv_data['report'] .'/'. $csv_data['user']) .'&nbsp;&nbsp;&nbsp;'. ((!is_null($_GET['nopage'])) ? l(t('Show paged records'), 'admin/store/reports/customers') : l(t('Show all records'), 'admin/store/reports/customers', array('query' => 'nopage=1'))) .'</div>';
+  $output .= theme('pager', NULL, $page_size);
+  $output .= '<div class="uc-reports-links">'. l(t('Export to CSV file.'), 'admin/store/reports/getcsv/'. $csv_data['report'] .'/'. $csv_data['user']) .'&nbsp;&nbsp;&nbsp;'. (isset($_GET['nopage']) ? l(t('Show paged records'), 'admin/store/reports/customers') : l(t('Show all records'), 'admin/store/reports/customers', array('query' => 'nopage=1'))) .'</div>';
 
   return $output;
 }
@@ -117,17 +117,10 @@ function uc_reports_customers() {
  * Display the product reports
  */
 function uc_reports_products() {
-  $statistics = db_result(db_query("SELECT status FROM {system} WHERE name = 'statistics'"));
-  $count_views = variable_get('statistics_count_content_views', FALSE);
-  if ($statistics && $count_views) {
-    $views_column = TRUE;
-  }
-  else {
-    $views_column = FALSE;
-  }
+  $views_column = module_exists('statistics') && variable_get('statistics_count_content_views', FALSE);
 
-  $page = (!is_null($_GET['page'])) ? intval($_GET['page']) : 0;
-  $page_size = (!is_null($_GET['nopage'])) ? UC_REPORTS_MAX_RECORDS : variable_get('uc_reports_table_size', 30);
+  $page = isset($_GET['page']) ? intval($_GET['page']) : 0;
+  $page_size = isset($_GET['nopage']) ? UC_REPORTS_MAX_RECORDS : variable_get('uc_reports_table_size', 30);
   $order_statuses = _uc_reports_order_statuses();
   $row_cell = $page * variable_get('uc_reports_table_size', 30) + 1;
   $csv_rows = array();
@@ -155,7 +148,7 @@ function uc_reports_products() {
   $csv_rows[] = array(t('#'), t('Product'), t('Sold'), t('Revenue'), t('Gross'));
 
   if ($views_column) {
-    $header[] = array('data' => t('Views'), 'field' => 'c.totalcount');
+    $header[] = array('data' => t('Views'), 'field' => 'nc.totalcount');
     $csv_rows[0][] = t('Views');
   }
 
@@ -188,22 +181,22 @@ function uc_reports_products() {
 
   $products = pager_query("SELECT $sql_vars FROM $sql_tables WHERE $sql_conditions GROUP BY n.nid, n.title" . tablesort_sql($header), $page_size, 0, $sql_count);
   while ($product = db_fetch_array($products)) {
-    $product_cell = l($product['title'], 'node/'. ($product['nid']));
+    $product_cell = l($product['title'], 'node/'. $product['nid']);
     $product_csv = $product['title'];
-    $sold_cell = (empty($product['sold'])) ? 0 : $product['sold'];
+    $sold_cell = empty($product['sold']) ? 0 : $product['sold'];
     $sold_csv = $sold_cell;
-    $revenue_cell = uc_price((empty($product['revenue'])) ? 0 : $product['revenue'], $context);
-    $revenue_csv = $revenue_cell;
-    $gross_cell = uc_price((empty($product['gross'])) ? 0 : $product['gross'], $context);
-    $gross_csv = $gross_cell;
+    $revenue_csv = empty($product['revenue']) ? 0 : $product['revenue'];
+    $revenue_cell = uc_price($revenue_csv, $context);
+    $gross_csv = empty($product['gross']) ? 0 : $product['gross'];
+    $gross_cell = uc_price($gross_csv, $context);
 
     $row = array(
       'data' => array(
         $row_cell,
         $product_cell,
         "<strong>$sold_cell</strong>",
-        array('data' => "<strong>$revenue_cell</strong>", 'nowrap' => 'nowrap'),
-        array('data' => "<strong>$gross_cell</strong>", 'nowrap' => 'nowrap'),
+        "<strong>$revenue_cell</strong>",
+        "<strong>$gross_cell</strong>",
       ),
       'primary' => TRUE,
     );
@@ -228,24 +221,25 @@ function uc_reports_products() {
         $gross = db_result(db_query("SELECT (SUM(p.price * p.qty) - SUM(p.cost * p.qty)) FROM {uc_order_products} AS p LEFT JOIN {uc_orders} AS o ON p.order_id = o.order_id WHERE o.order_status IN $order_statuses AND p.model = '%s' AND p.nid = %d", $model, $product['nid']));
         $breakdown_product = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;$model";
         $product_csv = "     $model";
-        $breakdown_sold = ((!empty($sold)) ? $sold : 0);
-        $sold_csv = ((!empty($sold)) ? $sold : 0);
+
+        $sold_csv = !empty($sold) ? $sold : 0;
+        $breakdown_sold = $sold_csv;
 
         $context['revision'] = 'themed';
-        $breakdown_revenue = uc_price((!empty($revenue)) ? $revenue : 0, $context);
-        $breakdown_gross = uc_price((!empty($gross)) ? $gross : 0, $context);
+        $revenue_csv = !empty($revenue) ? $revenue : 0;
+        $breakdown_revenue = uc_price($revenue_csv, $context);
 
+        $gross_csv = !empty($gross) ? $gross : 0;
+        $breakdown_gross = uc_price($gross_csv, $context);
         $context['revision'] = 'formatted';
-        $revenue_csv = uc_price((!empty($revenue)) ? $revenue : 0, $context);
-        $gross_csv = uc_price((!empty($gross)) ? $gross : 0, $context);
 
         $row = array(
           'data' => array(
             '',
             $breakdown_product,
             $breakdown_sold,
-            array('data' => $breakdown_revenue, 'nowrap' => 'nowrap'),
-            array('data' => $breakdown_gross, 'nowrap' => 'nowrap'),
+            $breakdown_revenue,
+            $breakdown_gross,
           ),
         );
         $csv_row = array('', $product_csv, $sold_csv, $revenue_csv, $gross_csv);
@@ -269,7 +263,7 @@ function uc_reports_products() {
 
   $output = theme('uc_reports_product_table', $header, $rows, array('width' => '100%', 'class' => 'uc-sales-table'));
   $output .= theme('pager', NULL, $page_size);
-  $output .= '<div class="uc-reports-links">'. l(t('Export to CSV file.'), 'admin/store/reports/getcsv/'. $csv_data['report'] .'/'. $csv_data['user']) .'&nbsp;&nbsp;&nbsp;'. (!is_null($_GET['nopage']) ? l(t('Show paged records'), 'admin/store/reports/products') : l(t('Show all records'), 'admin/store/reports/products', array('query' => 'nopage=1'))) .'</div>';
+  $output .= '<div class="uc-reports-links">'. l(t('Export to CSV file.'), 'admin/store/reports/getcsv/'. $csv_data['report'] .'/'. $csv_data['user']) .'&nbsp;&nbsp;&nbsp;'. (isset($_GET['nopage']) ? l(t('Show paged records'), 'admin/store/reports/products') : l(t('Show all records'), 'admin/store/reports/products', array('query' => 'nopage=1'))) .'</div>';
   $output .= '<small>*'. t('Make sure %setting_name is set to %state in the <a href="!url">access log settings page</a> to enable views column.', array('%setting_name' => 'count content views', '%state' => 'enabled', '!url' => url('admin/reports/settings', array('query' => 'destination=admin/store/reports/products')))) .'</small>';
 
   return $output;
@@ -309,13 +303,14 @@ function _uc_reports_product_get_skus($nid) {
 function uc_reports_products_custom() {
   $timezone = _uc_reports_timezone_offset();
   $timezone_offset = time() + $timezone;
-  $statistics = db_result(db_query("SELECT status FROM {system} WHERE name = 'statistics'"));
-  $count_views = variable_get('statistics_count_content_views', FALSE);
-  $page = (!is_null($_GET['page'])) ? intval($_GET['page']) : 0;
-  $page_size = (!is_null($_GET['nopage'])) ? UC_REPORTS_MAX_RECORDS : variable_get('uc_reports_table_size', 30);
+  $views_column = module_exists('statistics') && variable_get('statistics_count_content_views', FALSE);
+
+  $page = isset($_GET['page']) ? intval($_GET['page']) : 0;
+  $page_size = isset($_GET['nopage']) ? UC_REPORTS_MAX_RECORDS : variable_get('uc_reports_table_size', 30);
   $product_types = array("'product'");
-  $types = db_query("SELECT DISTINCT(pcid) FROM {uc_product_classes}");
   $csv_rows = array();
+
+  $types = db_query("SELECT DISTINCT(pcid) FROM {uc_product_classes}");
   while ($type = db_fetch_object($types)) {
     $product_types[] = "'". $type->pcid ."'";
   }
@@ -345,16 +340,16 @@ function uc_reports_products_custom() {
   }
   $time_condition = "o.created >= ". $args['start_date'] ." AND o.created <= ". $args['end_date'];
 
-  if ($statistics && $count_views) {
+  if ($views_column) {
     $header = array(
       array('data' => t('#')),
       array('data' => t('Product'), 'field' => 'n.title'),
-      array('data' => t('Views'), 'field' => 'c.totalcount'),
       array('data' => t('Sold'), 'field' => 'sold'),
       array('data' => t('Revenue'), 'field' => 'revenue', 'sort' => 'desc'),
       array('data' => t('Gross'), 'field' => 'gross'),
+      array('data' => t('Views'), 'field' => 'c.totalcount'),
     );
-    $csv_rows[] = array(t('#'), t('Product'), t('Views'), t('Sold'), t('Revenue'), t('Gross'));
+    $csv_rows[] = array(t('#'), t('Product'), t('Sold'), t('Revenue'), t('Gross'), t('Views'));
 
     $sql = '';
     switch ($GLOBALS['db_type']) {
@@ -392,47 +387,55 @@ function uc_reports_products_custom() {
   $sql_count = "SELECT COUNT(nid) FROM {node} WHERE type IN (". implode(", ", $product_types) .")";
   $products = pager_query($sql . tablesort_sql($header), $page_size, 0, $sql_count);
 
+  $rows = array();
   while ($product = db_fetch_array($products)) {
     $row_cell = ($page * variable_get('uc_reports_table_size', 30)) + count($rows) + 1;
-    $product_cell = l($product['title'], 'node/'. ($product['nid']));
+    $product_cell = l($product['title'], 'node/'. $product['nid']);
     $product_csv = $product['title'];
-    $sold_cell = (empty($product['sold'])) ? 0 : $product['sold'];
+    $sold_cell = empty($product['sold']) ? 0 : $product['sold'];
     $sold_csv = $sold_cell;
-    $revenue_cell = uc_currency_format((empty($product['revenue'])) ? 0 : $product['revenue']);
-    $revenue_csv = $revenue_cell;
-    $gross_cell = uc_currency_format((empty($product['gross'])) ? 0 : $product['gross']);
-    $gross_csv = $gross_cell;
+    $revenue_cell = uc_currency_format(empty($product['revenue']) ? 0 : $product['revenue']);
+    $revenue_csv = empty($product['revenue']) ? 0 : $product['revenue'];
+    $gross_cell = uc_currency_format(empty($product['gross']) ? 0 : $product['gross']);
+    $gross_csv = empty($product['gross']) ? 0 : $product['gross'];
 
     if (module_exists('uc_attribute')) {
       $breakdown_product = $breakdown_sold = $breakdown_revenue = $breakdown_gross = '';
 
       foreach (_uc_reports_product_get_skus($product['nid']) as $model) {  // was $models
         $sold = db_result(db_query("SELECT SUM(qty) FROM {uc_order_products} AS p LEFT JOIN {uc_orders} AS o ON p.order_id = o.order_id WHERE o.order_status IN $order_statuses AND p.model = '%s' AND p.nid = %d AND $time_condition", $model, $product['nid']));
+        $sold = empty($sold) ? 0 : $sold;
         $revenue = db_result(db_query("SELECT SUM(p.price * p.qty) FROM {uc_order_products} AS p LEFT JOIN {uc_orders} AS o ON p.order_id = o.order_id WHERE o.order_status IN $order_statuses AND p.model = '%s' AND p.nid = %d AND $time_condition", $model, $product['nid']));
+        $revenue = empty($revenue) ? 0 : $revenue;
         $gross = db_result(db_query("SELECT (SUM(p.price * p.qty) - SUM(p.cost * p.qty)) FROM {uc_order_products} AS p LEFT JOIN {uc_orders} AS o ON p.order_id = o.order_id WHERE o.order_status IN $order_statuses AND p.model = '%s' AND p.nid = %d AND $time_condition", $model, $product['nid']));
-        $breakdown_product .= "<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;$model";
+        $gross = empty($gross) ? 0 : $gross;
+
+        $breakdown_product .= "<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;$model";
         $product_csv .= "\n     $model";
-        $breakdown_sold .= "<br/>". ((!empty($sold)) ? $sold : 0);
-        $sold_csv .= "\n     ". ((!empty($sold)) ? $sold : 0);
-        $breakdown_revenue .= "<br/>". (uc_currency_format((!empty($revenue)) ? $revenue : 0));
-        $revenue_csv .= "\n     ". (uc_currency_format((!empty($revenue)) ? $revenue : 0));
-        $breakdown_gross .= "<br/>". (uc_currency_format((!empty($gross)) ? $gross : 0));
-        $gross_csv .= "\n     ". (uc_currency_format((!empty($gross)) ? $gross : 0));
+
+        $breakdown_sold .= "<br />" . $sold;
+        $sold_csv .= "\n     " . $sold;
+
+        $breakdown_revenue .= "<br />" . uc_currency_format($revenue);
+        $revenue_csv .= "\n     " . $revenue;
+
+        $breakdown_gross .= "<br />" . uc_currency_format($gross);
+        $gross_csv .= "\n     " . $gross;
       }
       $product_cell = $product_cell . $breakdown_product;
       $sold_cell = '<strong>'. $sold_cell .'</strong>'. $breakdown_sold;
       $revenue_cell = '<strong>'. $revenue_cell .'</strong>'. $breakdown_revenue;
       $gross_cell = '<strong>'. $gross_cell .'</strong>'. $breakdown_gross;
     }
-    if ($statistics && $count_views) {
-      $views = (empty($product['totalcount'])) ? 0 : $product['totalcount'];
+    if ($views_column) {
+      $views = empty($product['totalcount']) ? 0 : $product['totalcount'];
       $rows[] = array(
         array('data' => $row_cell),
         array('data' => $product_cell),
-        array('data' => $views),
         array('data' => $sold_cell),
-        array('data' => $revenue_cell, 'nowrap' => 'nowrap'),
-        array('data' => $gross_cell, 'nowrap' => 'nowrap'),
+        array('data' => $revenue_cell),
+        array('data' => $gross_cell),
+        array('data' => $views),
       );
       $csv_rows[] = array($row_cell, $product_csv, $views, $sold_csv, $revenue_csv, $gross_csv);
     }
@@ -441,8 +444,8 @@ function uc_reports_products_custom() {
         array('data' => $row_cell),
         array('data' => $product_cell),
         array('data' => $sold_cell),
-        array('data' => $revenue_cell, 'nowrap' => 'nowrap'),
-        array('data' => $gross_cell, 'nowrap' => 'nowrap'),
+        array('data' => $revenue_cell),
+        array('data' => $gross_cell),
       );
       $csv_rows[] = array($row_cell, $product_csv, $sold_csv, $revenue_csv, $gross_csv);
     }
@@ -453,10 +456,9 @@ function uc_reports_products_custom() {
   $csv_data = uc_reports_store_csv('uc_products', $csv_rows);
 
   // Build the page output holding the form, table, and CSV export link.
-  $output = drupal_get_form('uc_reports_products_custom_form', $args, $args['status'])
-          . theme('table', $header, $rows, array('width' => '100%', 'class' => 'uc-sales-table'))
-           .'<div class="uc-reports-links">'. l(t('Export to CSV file.'), 'admin/store/reports/getcsv/'. $csv_data['report'] .'/'. $csv_data['user']) .'</div>';
-
+  $output = drupal_get_form('uc_reports_products_custom_form', $args, $args['status']);
+  $output .= theme('table', $header, $rows, array('width' => '100%', 'class' => 'uc-sales-table'));
+  $output .= '<div class="uc-reports-links">'. l(t('Export to CSV file.'), 'admin/store/reports/getcsv/'. $csv_data['report'] .'/'. $csv_data['user']) .'&nbsp;&nbsp;&nbsp;'. (isset($_GET['nopage']) ? l(t('Show paged records'), 'admin/store/reports/products/custom') : l(t('Show all records'), 'admin/store/reports/products/custom', array('query' => 'nopage=1'))) .'</div>';
   $output .= theme('pager', NULL, $page_size);
   $output .= '<small>*'. t('Make sure %setting_name is set to %state in the <a href="!url">access log settings page</a> to enable views column.', array('%setting_name' => 'count content views', '%state' => 'enabled', '!url' => url('admin/reports/settings', array('query' => 'destination=admin/store/reports/products/custom')))) .'</small>';
 
@@ -548,6 +550,7 @@ function uc_reports_products_custom_form_submit($form, &$form_state) {
  *
  * Straight duplication of theme_table, but our row handling is different.
  *
+ * @see theme_table()
  * @ingroup themeable
  */
 function theme_uc_reports_product_table($header, $rows, $attributes = array(), $caption = NULL) {
@@ -610,6 +613,7 @@ function theme_uc_reports_product_table($header, $rows, $attributes = array(), $
       }
       if (count($cells)) {
         // Add odd/even class
+        // We don't flip here like theme_table(), because we did that above.
         if (isset($attributes['class'])) {
           $attributes['class'] .= ' '. $class;
         }
@@ -638,21 +642,29 @@ function theme_uc_reports_product_table($header, $rows, $attributes = array(), $
  * Display the sales summary report.
  */
 function uc_reports_sales_summary() {
-  $timezone_offset = time() + _uc_reports_timezone_offset();
+  // "Now" timestamp
+  $time = time();
+
+  // Site time minus GMT time, in seconds
+  $timezone_offset = _uc_reports_timezone_offset();
+
+  // Find day/month/year of "Now" in site timezone
+  $date_month = format_date($time, 'custom', 'n', $timezone_offset);
+  $date_year = format_date($time, 'custom', 'Y', $timezone_offset);
+  $date_day_of_month = format_date($time, 'custom', 'j', $timezone_offset);
+  $date_days_in_month = format_date($time, 'custom', 't', $timezone_offset);
+
+  // Calculate Unix timecodes (defined to be in GMT time)
+  // for beginning and ending of reporting periods
+  // Use gm functions so PHP won't try to do any timezone conversions by itself
+  $month_start = gmmktime(0, 0, 0, $date_month, 1, $date_year) - $timezone_offset;
+  $month_end = gmmktime(23, 59, 59, $date_month, $date_days_in_month, $date_year) - $timezone_offset;
+  $today_start = gmmktime(0, 0, 0, $date_month, $date_day_of_month, $date_year) - $timezone_offset;
+  $today_end = gmmktime(23, 59, 59, $date_month, $date_day_of_month, $date_year) - $timezone_offset;
+
+  // Initialize variables used later
   $order_statuses = _uc_reports_order_statuses();
   $format = variable_get('uc_date_format_default', 'm/d/Y');
-
-  $date_month = gmdate('n', $timezone_offset);
-  $date_year = gmdate('Y', $timezone_offset);
-  $date_day_of_month = gmdate('j', $timezone_offset);
-  $date_days_in_month = gmdate('t', $timezone_offset);
-
-  $month_start = gmmktime(0, 0, 0, $date_month, 1, $date_year);
-  $month_end = gmmktime(23, 59, 59, $date_month, $date_days_in_month, $date_year);
-
-  $today_start = gmmktime(0, 0, 0, $date_month, $date_day_of_month, $date_year);
-  $today_end = gmmktime(23, 59, 59, $date_month, $date_day_of_month, $date_year);
-
   // Build the report table header.
   $header = array(t('Sales data'), t('Number of orders'), t('Total revenue'), t('Average order'));
 
@@ -665,7 +677,7 @@ function uc_reports_sales_summary() {
   );
 
   $rows[] = array(
-    l(t('Today, !date', array('!date' => format_date($today_start, 'custom', $format, 0))), 'admin/store/orders/search/results/0/0/0/0/0/0/'. $today_start .'/'. $today_end),
+    l(t('Today, !date', array('!date' => format_date($today_start, 'custom', $format, $timezone_offset))), 'admin/store/orders/search/results/0/0/0/0/0/0/'. $today_start .'/'. $today_end),
     $today['total'],
     uc_price($today['income'], $context),
     uc_price($today['average'], $context),
@@ -675,7 +687,7 @@ function uc_reports_sales_summary() {
   $yesterday = _uc_reports_get_sales($today_start - 86400);
 
   $rows[] = array(
-    l(t('Yesterday, !date', array('!date' => format_date($today_start - 86400, 'custom', $format, 0))), 'admin/store/orders/search/results/0/0/0/0/0/0/'. ($today_start - 86400) .'/'. ($today_end - 86400)),
+    l(t('Yesterday, !date', array('!date' => format_date($today_start - 86400, 'custom', $format, $timezone_offset))), 'admin/store/orders/search/results/0/0/0/0/0/0/'. ($today_start - 86400) .'/'. ($today_end - 86400)),
     $yesterday['total'],
     uc_price($yesterday['income'], $context),
     uc_price($yesterday['average'], $context),
@@ -683,7 +695,7 @@ function uc_reports_sales_summary() {
 
   // Get the sales report for the month.
   $month = _uc_reports_get_sales($month_start, 'month');
-  $month_title = format_date($month_start, 'custom', 'M Y', 0);
+  $month_title = format_date($month_start, 'custom', 'M Y', $timezone_offset);
 
   // Add the month-to-date details to the report table.
   $rows[] = array(
@@ -778,12 +790,17 @@ function uc_reports_sales_summary() {
  * Display the yearly sales report form and table.
  */
 function uc_reports_sales_year() {
-  $timezone_offset = time() + _uc_reports_timezone_offset();
+  // "Now" timestamp
+  $time = time();
+
+  // Site time minus GMT time, in seconds
+  $timezone_offset = _uc_reports_timezone_offset();
+
   $order_statuses = _uc_reports_order_statuses();
 
   // Get the year for the report from the URL.
   if (intval(arg(5)) == 0) {
-    $year = format_date($timezone_offset, 'custom', 'Y', 0);
+    $year = format_date($time, 'custom', 'Y', $timezone_offset);
   }
   else {
     $year = arg(5);
@@ -803,8 +820,8 @@ function uc_reports_sales_year() {
   // For each month of the year...
   for ($i = 1; $i <= 12; $i++) {
     // Calculate the start and end timestamps for the month in local time.
-    $month_start = gmmktime(0, 0, 0, $i, 1, $year);
-    $month_end = gmmktime(23, 59, 59, $i + 1, 0, $year);
+    $month_start = gmmktime(0, 0, 0, $i, 1, $year) - $timezone_offset;
+    $month_end = gmmktime(23, 59, 59, $i + 1, 0, $year) - $timezone_offset;
 
     // Get the sales report for the month.
     $month_sales = _uc_reports_get_sales($month_start, 'month');
@@ -819,7 +836,7 @@ function uc_reports_sales_year() {
 
     // Add the month's row to the report table.
     $rows[] = array(
-      l(gmdate('M Y', $month_start), 'admin/store/orders/search/results/0/0/0/0/0/0/'. $month_start .'/'. $month_end),
+      l(format_date($month_start, 'custom', 'M Y', $timezone_offset), 'admin/store/orders/search/results/0/0/0/0/0/0/'. $month_start .'/'. $month_end),
       $month_sales['total'],
       uc_price($month_sales['income'], $context),
       uc_price($month_average, $context),
@@ -827,16 +844,16 @@ function uc_reports_sales_year() {
 
     // Add the data to the CSV export.
     $csv_rows[] = array(
-      gmdate('M Y', $month_start),
+      format_date($month_start, 'custom', 'M Y', $timezone_offset),
       $month_sales['total'],
-      uc_price($month_sales['income'], $context),
-      uc_price($month_average, $context),
+      $month_sales['income'],
+      $month_average,
     );
   }
 
   // Calculate the start and end timestamps for the year in local time.
-  $year_start = gmmktime(0, 0, 0, 1, 1, $year);
-  $year_end = gmmktime(23, 59, 59, 1, 0, $year + 1);
+  $year_start = gmmktime(0, 0, 0, 1, 1, $year) - $timezone_offset;
+  $year_end = gmmktime(23, 59, 59, 1, 0, $year + 1) - $timezone_offset;
 
   // Get the sales report for the year.
   $year_sales = _uc_reports_get_sales($year_start, 'year');
@@ -861,17 +878,17 @@ function uc_reports_sales_year() {
   $csv_rows[] = array(
     t('Total @year', array('@year' => $year)),
     $year_sales['total'],
-    uc_price($year_sales['income'], $context),
-    uc_price($year_average, $context),
+    $year_sales['income'],
+    $year_average,
   );
 
   // Cache the CSV export.
   $csv_data = uc_reports_store_csv('uc_sales_yearly', $csv_rows);
 
   // Build the page output holding the form, table, and CSV export link.
-  $output = drupal_get_form('uc_reports_sales_year_form', $year)
-          . theme('table', $header, $rows, array('width' => '100%', 'class' => 'uc-sales-table'))
-           .'<div class="uc-reports-links">'. l(t('Export to CSV file.'), 'admin/store/reports/getcsv/'. $csv_data['report'] .'/'. $csv_data['user']) .'</div>';
+  $output = drupal_get_form('uc_reports_sales_year_form', $year);
+  $output .= theme('table', $header, $rows, array('width' => '100%', 'class' => 'uc-sales-table'));
+  $output .= '<div class="uc-reports-links">'. l(t('Export to CSV file.'), 'admin/store/reports/getcsv/'. $csv_data['report'] .'/'. $csv_data['user']) .'</div>';
 
   return $output;
 }
@@ -969,10 +986,10 @@ function uc_reports_sales_custom() {
 
     // Create the date title for the subreport.
     if ($args['length'] == 'day') {
-      $date = format_date($subreport['start'], 'custom', $format .' - D', 0);
+      $date = format_date($subreport['start'], 'custom', $format .' - D', $timezone);
     }
     else {
-      $date = format_date($subreport['start'], 'custom', $format, 0) .' - '. format_date($subreport['end'], 'custom', $format, 0);
+      $date = format_date($subreport['start'], 'custom', $format, $timezone) .' - '. format_date($subreport['end'], 'custom', $format, $timezone);
     }
 
     // Build the order data for the subreport.
@@ -990,9 +1007,9 @@ function uc_reports_sales_custom() {
     // Build the product data for the subreport.
     if ($args['detail']) {
       // Grab the detailed product breakdown if selected.
-      $result = db_query("SELECT SUM(op.qty) as count, n.title, n.nid FROM {uc_order_products} as op LEFT JOIN {uc_orders} as o ON o.order_id = op.order_id LEFT JOIN {node} as n ON n.nid = op.nid WHERE %d <= o.created AND o.created <= %d AND o.order_status IN $order_statuses GROUP BY n.nid ORDER BY count DESC, n.title ASC", $subreport['start'], $subreport['end']);
+      $result = db_query("SELECT SUM(op.qty) as count, n.title, n.nid FROM {uc_order_products} as op LEFT JOIN {uc_orders} as o ON o.order_id = op.order_id LEFT JOIN {node} as n ON n.nid = op.nid WHERE %d <= o.created AND o.created <= %d AND o.order_status IN $order_statuses GROUP BY n.nid, n.title ORDER BY count DESC, n.title ASC", $subreport['start'], $subreport['end']);
       while ($product_breakdown = db_fetch_object($result)) {
-        $product_data .= $product_breakdown->count .' x '. l($product_breakdown->title, 'node/'. $product_breakdown->nid) ."<br/>\n";
+        $product_data .= $product_breakdown->count .' x '. l($product_breakdown->title, 'node/'. $product_breakdown->nid) ."<br />\n";
         $product_csv .= $product_breakdown->count .' x '. $product_breakdown->title ."\n";
       }
     }
@@ -1007,7 +1024,7 @@ function uc_reports_sales_custom() {
 
     // Add the subreport's row to the report table.
     $rows[] = array(
-      array('data' => $date, 'nowrap' => 'nowrap'),
+      $date,
       empty($order_data) ? '0' : $order_data,
       empty($product_data) ? '0' : $product_data,
       uc_price($revenue_count, $context),
@@ -1018,7 +1035,7 @@ function uc_reports_sales_custom() {
       $date,
       empty($order_csv) ? '0' : $order_csv,
       empty($product_csv) ? '0' : $product_csv,
-      uc_price($revenue_count, $context),
+      $revenue_count,
     );
   }
 
@@ -1040,16 +1057,16 @@ function uc_reports_sales_custom() {
     t('Total'),
     $order_total,
     $product_total,
-    uc_price($revenue_total, $context),
+    $revenue_total,
   );
 
   // Cache the CSV export.
   $csv_data = uc_reports_store_csv('uc_sales_custom', $csv_rows);
 
   // Build the page output holding the form, table, and CSV export link.
-  $output = drupal_get_form('uc_reports_sales_custom_form', $args, $args['status'])
-          . theme('table', $header, $rows, array('width' => '100%', 'class' => 'uc-sales-table'))
-           .'<div class="uc-reports-links">'. l(t('Export to CSV file.'), 'admin/store/reports/getcsv/'. $csv_data['report'] .'/'. $csv_data['user']) .'</div>';
+  $output = drupal_get_form('uc_reports_sales_custom_form', $args, $args['status']);
+  $output .= theme('table', $header, $rows, array('width' => '100%', 'class' => 'uc-sales-table'));
+  $output .= '<div class="uc-reports-links">'. l(t('Export to CSV file.'), 'admin/store/reports/getcsv/'. $csv_data['report'] .'/'. $csv_data['user']) .'</div>';
 
   return $output;
 }
@@ -1063,6 +1080,7 @@ function uc_reports_sales_custom() {
  *   uc_reports_sales_custom_form_submit()
  */
 function uc_reports_sales_custom_form($form_state, $values, $statuses) {
+  $timezone_offset = _uc_reports_timezone_offset();
   $form['search'] = array(
     '#type' => 'fieldset',
     '#title' => t('Customize sales report parameters'),
@@ -1075,18 +1093,18 @@ function uc_reports_sales_custom_form($form_state, $values, $statuses) {
     '#type' => 'date',
     '#title' => t('Start date'),
     '#default_value' => array(
-      'month' => format_date($values['start_date'], 'custom', 'n', 0),
-      'day' => format_date($values['start_date'], 'custom', 'j', 0),
-      'year' => format_date($values['start_date'], 'custom', 'Y', 0),
+      'month' => format_date($values['start_date'], 'custom', 'n', $timezone_offset),
+      'day' => format_date($values['start_date'], 'custom', 'j', $timezone_offset),
+      'year' => format_date($values['start_date'], 'custom', 'Y', $timezone_offset),
     ),
   );
   $form['search']['end_date'] = array(
     '#type' => 'date',
     '#title' => t('End date'),
     '#default_value' => array(
-      'month' => format_date($values['end_date'], 'custom', 'n', 0),
-      'day' => format_date($values['end_date'], 'custom', 'j', 0),
-      'year' => format_date($values['end_date'], 'custom', 'Y', 0),
+      'month' => format_date($values['end_date'], 'custom', 'n', $timezone_offset),
+      'day' => format_date($values['end_date'], 'custom', 'j', $timezone_offset),
+      'year' => format_date($values['end_date'], 'custom', 'Y', $timezone_offset),
     ),
   );
 
@@ -1154,17 +1172,15 @@ function uc_reports_sales_custom_form_submit($form, &$form_state) {
   $timezone_offset = _uc_reports_timezone_offset();
 
   // Build the start and end dates from the form.
-  $start_date = gmmktime(0, 0, 0, $form_state['values']['start_date']['month'], $form_state['values']['start_date']['day'], $form_state['values']['start_date']['year']);
-  $end_date = gmmktime(23, 59, 59, $form_state['values']['end_date']['month'], $form_state['values']['end_date']['day'], $form_state['values']['end_date']['year']);
-
+  $start_date = gmmktime(0, 0, 0, $form_state['values']['start_date']['month'], $form_state['values']['start_date']['day'], $form_state['values']['start_date']['year']) - $timezone_offset;
+  $end_date = gmmktime(23, 59, 59, $form_state['values']['end_date']['month'], $form_state['values']['end_date']['day'], $form_state['values']['end_date']['year']) - $timezone_offset;
   $args = array(
     $start_date,
     $end_date,
     $form_state['values']['length'],
-    drupal_urlencode(implode(',', array_keys($form_state['values']['status']))),
+    implode(',', array_keys($form_state['values']['status'])),
     $form_state['values']['detail'],
   );
 
   $form_state['redirect'] = 'admin/store/reports/sales/custom/'. implode('/', $args);
 }
-

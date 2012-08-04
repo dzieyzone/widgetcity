@@ -47,17 +47,14 @@
           </div>
         <?php endif; ?>
         <?php if($header_last): ?>
-          <div id="header-last" class="<?php print $header_last_classes; ?> alpha omega">
+          <div id="header-last" class="<?php print $header_last_classes; ?>">
             <?php print $header_last; ?>
-						<?php if ($search_box): ?>
-              <div id="search-box" class="grid-<?php print $search_width; ?>"><?php print $search_box; ?></div>
-            <?php endif; ?>
           </div>
         <?php endif; ?>
       </div>
       <?php endif; ?>
       
-      <?php if($site_slogan && $is_front || $breadcrumb): ?>
+      <?php if($site_slogan && $is_front || $search_box || $breadcrumb): ?>
       <div id="internal-nav" class="container-<?php print $internal_nav_wrapper_width; ?> clearfix">
         <div id="slogan-bcrumb" class="grid-<?php print $breadcrumb_slogan_width; ?>">
           <?php if ($site_slogan && $is_front): ?>
@@ -67,6 +64,9 @@
             <div id="bcrumb"><?php print $breadcrumb; ?></div>
           <?php endif; ?>
         </div>
+        <?php if ($search_box): ?>
+          <div id="search-box" class="grid-<?php print $search_width; ?>"><?php print $search_box; ?></div>
+        <?php endif; ?>
       </div>
       <?php endif; ?>
       

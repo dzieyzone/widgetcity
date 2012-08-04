@@ -1,5 +1,4 @@
 <?php
-// $Id: uc_quote.pages.inc,v 1.1.2.8 2009/09/21 14:34:47 islandusurper Exp $
 
 /**
  * @file
@@ -22,19 +21,18 @@ function uc_quote_request_quotes() {
     $product->nid = $props[0];
     $product->title = $props[1];
     $product->model = $props[2];
-    $product->manufacturer = $props[3];
-    $product->qty = $props[4];
-    $product->cost = $props[5];
-    $product->price = $props[6];
-    $product->weight = $props[7];
-    if ($data = unserialize($props[8])) {
+    $product->qty = $props[3];
+    $product->cost = $props[4];
+    $product->price = $props[5];
+    $product->weight = $props[6];
+    if ($data = unserialize($props[7])) {
       $product->data = $data;
     }
     else {
-      $product->data = $props[8];
+      $product->data = $props[7];
     }
     if ($product->nid) {
-      $node = (array)node_load($product->nid);
+      $node = (array) node_load($product->nid);
       foreach ($node as $key => $value) {
         if (!isset($product->$key)) {
           $product->$key = $value;
@@ -58,7 +56,7 @@ function uc_quote_request_quotes() {
   // Consider the total to be from products only, because line items are
   // mostly non-existent at this point.
   $fake_order->order_total = uc_order_get_total($fake_order, TRUE);
-  // Get all quote types neccessary to fulfill order.
+  // Get all quote types necessary to fulfill order.
   $quote_data = _uc_quote_assemble_quotes($fake_order);
   //drupal_set_message('<pre>'. print_r($methods, TRUE) .'</pre>');
   //drupal_set_message('<pre>'. print_r($quote_data, TRUE) .'</pre>');
@@ -72,7 +70,7 @@ function uc_quote_request_quotes() {
 }
 
 /**
- * Pull the get_quote_from_* triggers and assemble their returned data.
+ * Pulls the get_quote_from_* triggers and assembles their returned data.
  */
 function _uc_quote_assemble_quotes($order) {
   global $user;
@@ -140,7 +138,7 @@ function _uc_quote_assemble_quotes($order) {
     $predicates = ca_load_trigger_predicates('get_quote_from_'. $method['id']);
     $predicate = array_shift($predicates);
     if ($predicate && ca_evaluate_conditions($predicate, $arguments)) {
-      $data = uc_quote_action_get_quote($order, $method, $user);
+      $data = uc_quote_action_get_quote($order, $method);
 
       foreach ($data as &$quote) {
         if (isset($quote['rate'])) {
@@ -159,4 +157,3 @@ function _uc_quote_assemble_quotes($order) {
   }
   return $quote_data;
 }
-

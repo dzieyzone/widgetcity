@@ -1,9 +1,8 @@
 <?php
-// $Id: themekey_properties_validators.inc,v 1.1.2.4 2010/05/26 14:17:12 mkalkbrenner Exp $
 
 /**
  * @file
- * Provides set of validators which could be used to validate
+ * Provides set of validators which can be used to validate
  * ThemeKey Theme Switching Rules.
  * @see themekey_validators.inc
  * @see themekey_admin.inc
@@ -11,17 +10,17 @@
  * @author Markus Kalkbrenner | Cocomore AG
  *   @see http://drupal.org/user/124705
  *
- * @author Carsten MÃ¼ller | Cocomore AG
+ * @author Carsten MŸller | Cocomore AG
  *   @see http://drupal.org/user/124707
  */
 
 
 /**
- * Validates a Theme Switichng Rule.
+ * Validates a Theme Switching Rule.
  * Allowed Operators: any
  * Allowed values:
  * - valid regular expression if operator is "~"
- * - a vaild IPv4 address like "123.123.123.123" if operator is "=" or "!"
+ * - a valid IPv4 address like "123.123.123.123" if operator is "=" or "!"
  * - fragment of an IPv4 address which contains at least one digit
  *   for different operators
  *
@@ -30,7 +29,7 @@
  *   A Theme Switching Rule as associative array:
  *   - property: ThemeKey property as string (p.e. "drupal:path")
  *   - wildcard: optional string, only used if property is "drupal:path:wildcard"
- *   - operator: ThemeKey operator as string ("=", "!", "<". "<=", ">", ">=", "~")
+ *   - operator: ThemeKey operator as string ("=", "!", "*", "!*", "<", "<=", ">", ">=", "~", "!~")
  *   - value: ThemeKey property value as string
  *
  * @return
@@ -43,7 +42,7 @@
  *     describing a problem with the operator
  *   - value: translated error message as string
  *     describing a problem with the value
- *   If no errors detected the array is empty.
+ *   If no were errors detected, the array is empty.
  */
 function themekey_properties_validator_ip_address($rule) {
   $errors = array();
@@ -59,7 +58,7 @@ function themekey_properties_validator_ip_address($rule) {
       break;
 
     case '~':
-      // CHECK THE REGULAR EXPRESSION
+    case '!~':
       $errors = themekey_validator_regex($rule);
       break;
 
@@ -77,18 +76,18 @@ function themekey_properties_validator_ip_address($rule) {
 
 
 /**
- * Validates a Theme Switichng Rule.
+ * Validates a Theme Switching Rule.
  * Allowed Operators: "=", "!", "~"
  * Allowed values:
  * - valid regular expression if operator is "~"
- * - a vaild drupal role if operator is "=" or "!"
+ * - a valid Drupal role if operator is "=" or "!"
  *
  *
  * @param $rule
  *   A Theme Switching Rule as associative array:
- *   - property: ThemeKey property as string (p.e. "drupal:path")
+ *   - property: ThemeKey property as string (e.g., "drupal:path")
  *   - wildcard: optional string, only used if property is "drupal:path:wildcard"
- *   - operator: ThemeKey operator as string ("=", "!", "<". "<=", ">", ">=", "~")
+ *   - operator: ThemeKey operator as string ("=", "!", "*", "!*", "<", "<=", ">", ">=", "~", "!~")
  *   - value: ThemeKey property value as string
  *
  * @return
@@ -116,16 +115,17 @@ function themekey_validator_role($rule) {
       }
 
       if (!in_array($rule['value'], $roles)) {
-        $errors['value'] = t('The entered user role %value is not valid. Possible roles are "%roles".', array('%value' => $rule['value'], '%roles' => implode('", "', $roles)));
+        $errors['value'] = t('The entered user role, %value, is not valid. Possible roles are "%roles".', array('%value' => $rule['value'], '%roles' => implode('", "', $roles)));
       }
       break;
 
     case '~':
+    case '!~':
       $errors = themekey_validator_regex($rule);
       break;
 
     default:
-      $errors['operator'] = t('Possible operators are "=", "!", "~"');
+      $errors['operator'] = t('Possible operators are "=", "!", "*", "!*", "~", "!~"');
       break;
 
   }
@@ -135,7 +135,7 @@ function themekey_validator_role($rule) {
 
 
 /**
- * Validates a Theme Switichng Rule.
+ * Validates a Theme Switching Rule.
  * Allowed Operators: "=", "!"
  * Allowed values:
  * - a three letter day String if operator is "=" or "!"
@@ -143,9 +143,9 @@ function themekey_validator_role($rule) {
  *
  * @param $rule
  *   A Theme Switching Rule as associative array:
- *   - property: ThemeKey property as string (p.e. "drupal:path")
+ *   - property: ThemeKey property as string (e.g. "drupal:path")
  *   - wildcard: optional string, only used if property is "drupal:path:wildcard"
- *   - operator: ThemeKey operator as string ("=", "!", "<". "<=", ">", ">=", "~")
+ *   - operator: ThemeKey operator as string ("=", "!", "*", "!*", "<", "<=", ">", ">=", "~", "!~")
  *   - value: ThemeKey property value as string
  *
  * @return

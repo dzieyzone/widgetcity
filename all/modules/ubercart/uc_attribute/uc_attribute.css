@@ -1,14 +1,13 @@
-/* $Id: uc_attribute.css,v 1.4.4.3 2009/07/08 12:56:50 islandusurper Exp $ */
-
+/**
+ * @file
+ * Styles for uc_attribute module.
+ */
 .options {
   display: inline;
 }
 
-tr.draggable div.form-item {
-  display: inline;
-}
-
 table.product_attributes tr.draggable .form-item {
+  display: inline;
   white-space: normal;
 }
 
@@ -16,6 +15,7 @@ table.product_attributes tr.draggable .form-item {
   width: 26%;
 }
 
-.combinations td:first-child, .combinations td:first-child + td {
+.combinations td:first-child,
+.combinations td:first-child + td {
   width: 12%;
 }

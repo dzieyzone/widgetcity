@@ -1,5 +1,4 @@
 <?php
-// $Id: uc_file.ca.inc,v 1.1.2.7 2009/08/17 21:27:53 islandusurper Exp $
 
 /**
  * @file
@@ -12,7 +11,7 @@
  ******************************************************************************/
 
 /**
- * Implementation of hook_ca_entity().
+ * Implements hook_ca_entity().
  *
  * An entity is defined in order to get file expiration(s) down
  * to token in the email.
@@ -29,7 +28,7 @@ function uc_file_ca_entity() {
 }
 
 /**
- * Implementation of hook_ca_predicate().
+ * Implements hook_ca_predicate().
  */
 function uc_file_ca_predicate() {
 
@@ -45,12 +44,12 @@ function uc_file_ca_predicate() {
       '#conditions' => array(
         array(
           '#name' => 'uc_order_status_condition',
-          '#title' => t('If the order status is completed.'),
+          '#title' => t('If the updated order status is payment received.'),
           '#argument_map' => array(
             'order' => 'updated_order',
           ),
           '#settings' => array(
-            'order_status' => 'completed',
+            'order_status' => 'payment_received',
           ),
         ),
       ),
@@ -60,7 +59,7 @@ function uc_file_ca_predicate() {
         '#name' => 'uc_file_order_renew',
         '#title' => t('Update all file expirations for this order.'),
         '#argument_map' => array(
-          'order' => 'order',
+          'order' => 'updated_order',
         ),
       ),
     ),
@@ -98,7 +97,7 @@ function uc_file_ca_predicate() {
 }
 
 /**
- * Implementation of hook_ca_action().
+ * Implements hook_ca_action().
  */
 function uc_file_ca_action() {
 
@@ -135,7 +134,7 @@ function uc_file_ca_action() {
 }
 
 /**
- * Implementation of hook_ca_trigger().
+ * Implements hook_ca_trigger().
  */
 function uc_file_ca_trigger() {
 
@@ -160,7 +159,7 @@ function uc_file_ca_trigger() {
 }
 
 /**
- * Send an email with order and file replacement tokens.
+ * Sends an email with order and file replacement tokens.
  *
  * The recipients, subject, and message fields take order token replacements.
  *
@@ -198,77 +197,20 @@ function uc_file_action_order_email($order, $file_expiration, $settings) {
  * @see uc_file_action_order_email()
  */
 function uc_file_action_order_email_form($form_state, $settings = array()) {
-  return uc_file_build_email_form($form_state, $settings, array('global', 'uc_file'));
+  return ca_build_email_form($form_state, $settings, array('global', 'uc_file'));
 }
 
 /**
- * Build an email action settings form.
- */
-function uc_file_build_email_form($form_state, $settings, $token_filters) {
-  $form = array();
-
-  $form['from'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Sender'),
-    '#default_value' => $settings['from'],
-    '#description' => t('The "From" address.'),
-    '#required' => TRUE,
-  );
-  $form['addresses'] = array(
-    '#type' => 'textarea',
-    '#title' => t('Recipients'),
-    '#default_value' => $settings['addresses'],
-    '#description' => t('Enter the email addresses to receive the notifications, one on each line. You may use order tokens for dynamic email addresses.'),
-    '#required' => TRUE,
-  );
-  $form['subject'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Subject'),
-    '#default_value' => $settings['subject'],
-    '#required' => TRUE,
-  );
-  $form['message'] = array(
-    '#type' => 'textarea',
-    '#title' => t('Message'),
-    '#default_value' => $settings['message'],
-  );
-
-  // We add the #is_format element to allow us to locate and configure the filters.
-  $form['format'] = filter_form($settings['format']) + array('#is_format' => TRUE);
-
-  $form['token_help'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Replacement patterns'),
-    '#description' => t('You can make use of the replacement patterns in the recipients field, the subject, and the message body.'),
-    '#collapsible' => TRUE,
-    '#collapsed' => TRUE,
-  );
-  foreach ($token_filters as $name) {
-    $form['token_help'][$name] = array(
-      '#type' => 'fieldset',
-      '#title' => t('@name replacement patterns', array('@name' => drupal_ucfirst($name))),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-    );
-    $form['token_help'][$name]['content'] = array(
-      '#value' => theme('token_help', $name),
-    );
-  }
-
-  return $form;
-}
-
-/**
- * Renew an orders product files.
- *
- * @param $order
- *   An Ubercart order object.
+ * Renews an orders product files.
  *
  * This function updates access limits on all files found on all products
  * on a given order. First, the order user is loaded, then the order's products
- * are scanned for file product features. An order comment is saved, and the user is
- * notified in Drupal, as well as through the email address associated with the
- * order.
+ * are scanned for file product features. An order comment is saved, and the
+ * user is notified in Drupal, as well as through the email address associated
+ * with the order.
+ *
+ * @param $order
+ *   An Ubercart order object.
  */
 function uc_file_action_order_renew($order) {
 
@@ -284,7 +226,7 @@ function uc_file_action_order_renew($order) {
     $files = db_query("SELECT * FROM {uc_file_products} AS fp ".
       "INNER JOIN {uc_product_features} AS pf ON pf.pfid = fp.pfid ".
       "INNER JOIN {uc_files} as f ON f.fid = fp.fid ".
-      "WHERE nid = %d", $product->nid, $order_user->uid);
+      "WHERE nid = %d", $product->nid);
 
     while ($file = db_fetch_object($files)) {
 
@@ -301,7 +243,7 @@ function uc_file_action_order_renew($order) {
       $file_modification = array(
         'download_limit' => uc_file_get_download_limit($file),
         'address_limit' => uc_file_get_address_limit($file),
-        'expiration' => _uc_file_expiration_date(uc_file_get_time_limit($file), $file_user->expiration),
+        'expiration' => _uc_file_expiration_date(uc_file_get_time_limit($file), max($file_user->expiration, time())),
       );
 
       // Add file_user(s) for this file/directory. (No overwrite)
@@ -317,7 +259,7 @@ function uc_file_action_order_renew($order) {
       else {
         $comment = t('User can now download the file %file.', array('%file' => basename($file->filename)));
       }
-      uc_order_comment_save($order->order_id, $user->uid, $comment);
+      uc_order_comment_save($order->order_id, $order_user->uid, $comment);
     }
   }
 

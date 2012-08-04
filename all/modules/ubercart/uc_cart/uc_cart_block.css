@@ -1,12 +1,12 @@
-/* $Id: uc_cart_block.css,v 1.7.2.10 2009/07/21 14:51:20 islandusurper Exp $ */
-
 /**
- * Styles for the cart block icon.
+ * Styles for the uc_cart module cart block icon.
  */
-.cart-block-icon-full, .cart-block-icon-empty {
-  display: inline;
-  padding: 4px 12px 0;
-  height: 7px;
+.cart-block-icon-full,
+.cart-block-icon-empty {
+  float: left;
+  height: 16px;
+  margin: 2px 6px 0 0;
+  width: 16px;
 }
 
 .cart-block-icon-full {
@@ -22,6 +22,8 @@
  */
 .cart-block-title-bar {
   display: inline;
+  padding-right: 20px;
+  position: relative;
 }
 
 .cart-block-toggle {
@@ -29,9 +31,11 @@
 }
 
 .cart-block-arrow {
-  display: inline;
-  padding: 4px 12px 0;
-  height: 7px;
+  height: 5px;
+  position: absolute;
+  right: 0;
+  top: 9px;
+  width: 10px;
 }
 
 .cart-block-title-bar .arrow-up {
@@ -57,10 +61,10 @@
 }
 
 #cart-block-contents .product-description li {
+  font-size: .8em;
   margin: 0pt;
   padding-top: 0pt;
   padding-bottom: 0pt;
-  font-size: .8em;
 }
 
 .cart-block-items {
@@ -76,7 +80,8 @@
   vertical-align: top;
 }
 
-.cart-block-items tr.odd, .cart-block-items tr.even {
+.cart-block-items tr.odd,
+.cart-block-items tr.even {
   background-color: inherit;
   border: none;
 }
@@ -107,8 +112,8 @@
 }
 
 .cart-block-summary-total {
-  width: auto;
   text-align: right;
+  width: auto;
 }
 
 .cart-block-summary-total label {
@@ -124,12 +129,11 @@
 }
 
 .cart-block-summary-links ul.links li {
-  padding: 0em 1em 0em .75em;
   border-right: solid 1px;
+  padding: 0em 1em 0em .75em;
 }
 
 .cart-block-summary-links ul.links li.last {
-  padding-right: 0em;
   border-right: none;
+  padding-right: 0em;
 }
-

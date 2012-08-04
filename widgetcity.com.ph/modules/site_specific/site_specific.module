@@ -1,0 +1,37 @@
+<?php
+// $Id: site_specific.module,v 1.43.2.7 2008/09/09 14:39:01 sun Exp $
+/*
+function site_specific_preprocess_page(&$vars) {
+}
+
+function site_specific_preprocess_node(&$vars) {
+}
+function site_specific_form_alter(&$form, $form_state, $form_id) {
+  if (strstr($form_id, 'uc_product_add_to_cart_form')) {
+    $node            = $form['#parameters'][2];
+
+    $price  = '$'.number_format($node->sell_price,2);
+    $retail = '$'.number_format($node->list_price,2);
+
+    $form['qty']['#weight'] = 9;
+    $form['qty']['#horz-form-item'] = 1;
+
+
+    if ($retail > $price) {
+      $price_output = <<<OUT
+       <div class="price-retail">Retail Price <span class="price list">{$retail}</span></div>
+       <div class="price-sale">SALE Only <span class="price sell">{$price}</span></div>
+OUT;
+    }
+    else {
+      $price_output = <<<OUT
+       <div class="price-sale">Only <span class="price sell">{$price}</span></div>
+			 <div class="no-price-retail">&nbsp;</div>
+OUT;
+    }
+
+    $form['submit']['#weight'] = 10;
+    $form['submit']['#prefix'] = '<div id="product-price-meta" class="clear-block">'. $price_output .'</div>';
+  }
+}
+*/

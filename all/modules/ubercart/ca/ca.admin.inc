@@ -1,5 +1,4 @@
 <?php
-// $Id: ca.admin.inc,v 1.1.2.16 2009/07/21 14:37:19 islandusurper Exp $
 
 /**
  * @file
@@ -14,6 +13,7 @@ function ca_admin($groupby = 'trigger') {
 
   // Load all the module defined predicates into a temporary array.
   $temp = module_invoke_all('ca_predicate');
+  drupal_alter('ca_predicate', $temp);
 
   // Assign a default weight if need be.
   foreach ($temp as $key => $value) {
@@ -115,6 +115,7 @@ function ca_admin($groupby = 'trigger') {
   ksort($tables);
 
   // Add the tables for each trigger to the output.
+  $output = '';
   foreach ($tables as $key => $value) {
     // Accommodate empty class names.
     if (empty($key)) {
@@ -133,6 +134,8 @@ function ca_admin($groupby = 'trigger') {
  * Form to allow the creation and editing of conditional action predicates.
  */
 function ca_predicate_meta_form($form_state, $pid) {
+  $predicate = array();
+
   // Load the predicate if an ID is passed in.
   if (!empty($pid) && $pid !== 0) {
     $predicate = ca_load_predicate($pid);
@@ -179,11 +182,13 @@ function ca_predicate_meta_form($form_state, $pid) {
     '#type' => 'textarea',
     '#title' => t('Description'),
     '#description' => t('Enter a description that summarizes the use and intent of the predicate.'),
-    '#default_value' => $pid ? $predicate['#description'] : '',
+    '#default_value' => $pid ?
+                        (isset($predicate['#description']) ? $predicate['#description'] : '') :
+                        '',
   );
 
   // Accommodate the mandatory custom prefix for predicate classes.
-  $class = $predicate['#class'];
+  $class = isset($predicate['#class']) ? $predicate['#class'] : '';
   if (strpos($class, 'custom') === 0) {
     $class = ltrim(substr($class, 6), ':');
   }
@@ -238,8 +243,9 @@ function ca_predicate_meta_form_submit($form, &$form_state) {
   $form_state['redirect'] = CA_UI_PATH;
   $save = FALSE;
 
-  // Load the original predicate.
-  if ($form_state['values']['pid'] !== 0) {
+  // Load the original predicate, if any.
+  $predicate = array();
+  if ($form_state['values']['predicate_pid'] !== 0) {
     $predicate = ca_load_predicate($form_state['values']['predicate_pid']);
     $predicate['#pid'] = $form_state['values']['predicate_pid'];
   }
@@ -249,7 +255,7 @@ function ca_predicate_meta_form_submit($form, &$form_state) {
 
   // Compare the values from the form submission with what is already set.
   foreach ($fields as $field) {
-    if ($form_state['values']['predicate_'. $field] != $predicate['#'. $field]) {
+    if (!isset($predicate['#'. $field]) || $form_state['values']['predicate_'. $field] != $predicate['#'. $field]) {
       $predicate['#'. $field] = $form_state['values']['predicate_'. $field];
       $save = TRUE;
     }
@@ -370,13 +376,13 @@ function ca_actions_form($form_state, $pid, $title = TRUE) {
 
   foreach ($predicate['#actions'] as $key => $action) {
     // Add it to the form if the action's callback exists.
-    $callback = $action_data[$action['#name']]['#callback'];
+    $callback = isset($action_data[$action['#name']]['#callback']) ? $action_data[$action['#name']]['#callback'] : '';
 
     if (function_exists($callback)) {
       $form['actions'][$i] = array(
         '#type' => 'fieldset',
         '#title' => t('Action: @title', array('@title' => $action_data[$action['#name']]['#title'])),
-        '#description' => $action_data[$action['#name']]['#description'],
+        '#description' => isset($action_data[$action['#name']]['#description']) ?  $action_data[$action['#name']]['#description'] : '',
         '#collapsible' => TRUE,
         '#collapsed' => isset($_SESSION['ca_action_focus']) && $i == $_SESSION['ca_action_focus'] ? FALSE : TRUE,
       );
@@ -641,16 +647,16 @@ function ca_conditions_form($form_state, $pid, $title = TRUE) {
   // structure of a predicate's #conditions array.
   $form['conditions']['#tree'] = TRUE;
 
-  $form['add_condition_group'] = array(
-    '#type' => 'submit',
-    '#value' => t('Add condition group'),
-    '#submit' => array('ca_conditions_form_add_condition_group_submit'),
-  );
-
   $form['save'] = array(
     '#type' => 'submit',
     '#value' => t('Save changes'),
     '#submit' => array('ca_conditions_form_save_changes_submit'),
+  );
+
+  $form['add_condition_group'] = array(
+    '#type' => 'submit',
+    '#value' => t('Add condition group'),
+    '#submit' => array('ca_conditions_form_add_condition_group_submit'),
   );
 
   filter_configure_form($form);
@@ -1124,16 +1130,16 @@ function _ca_convert_configurations(&$context) {
         switch ($configuration['#event']) {
           case 'order_status_update':
             $trigger = 'uc_order_status_update';
-          break;
+            break;
           case 'payment_entered':
             $trigger = 'uc_payment_entered';
-          break;
+            break;
           case 'checkout_complete':
             $trigger = 'uc_checkout_complete';
-          break;
+            break;
           default:
             $trigger = $configuration['#event'];
-          break;
+            break;
         }
 
         // In UC 1.x, taxes had an event for each tax rate, using the same
@@ -1219,7 +1225,7 @@ function _ca_convert_conditions($condition_tree) {
       }
     }
   }
-  else if ($condition_tree['#type'] == 'condition') {
+  elseif ($condition_tree['#type'] == 'condition') {
     // Some conditions were renamed but check the same things.
     switch ($condition_tree['#name']) {
       case 'uc_order_condition_order_total':

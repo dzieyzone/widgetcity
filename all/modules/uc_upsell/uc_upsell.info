@@ -1,0 +1,12 @@
+; $Id: uc_upsell.info,v 1.1.2.3 2009/08/28 03:27:54 torgospizza Exp $
+name = Upsell
+description = Offer customers items at their cart
+dependencies[] = uc_store
+package = Ubercart - extra
+core = 6.x
+; Information added by drupal.org packaging script on 2009-09-25
+version = "6.x-1.20"
+core = "6.x"
+project = "uc_upsell"
+datestamp = "1253853350"
+

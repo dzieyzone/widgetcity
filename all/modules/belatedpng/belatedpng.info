@@ -1,0 +1,10 @@
+; $Id: belatedpng.module,v 1.0.0.0 2009/09/28 12:00:00 dzieyzone Exp $
+name = "Belated PNG"
+description = "Fixing PNG transparency for Internet Explore 6 and below using VML instead of Microsoft's AlphaImageLoader filter. Implementation of DD_belatedPNG by Drew Diller."
+core = 6.x
+
+; Information added by dzieyzone on 2009-09-28
+version = "6.x-1.x-dev"
+core = "6.x"
+project = "belatedpng"
+datestamp = "1255540199"

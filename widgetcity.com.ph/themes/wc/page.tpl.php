@@ -2,16 +2,6 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:fb="http://www.facebook.com/2008/fbml" xml:lang="<?php print $language->language; ?>" lang="<?php print $language->language; ?>" dir="<?php print $language->dir; ?>">
 <head>
 <title><?php print $head_title; ?></title>
-<?php $fpath = isset($_GET['q']) ? $_GET['q'] : '<front>';
-//$fburl = url($fpath, array('absolute' => TRUE));
-$fburl = 'http://www.widgetcity.com.ph/'.$_GET['q'];
-?>
-<meta property="og:title" content="<?php echo $head_title;?>" />
-<meta property="og:type" content="<?php echo ($is_front) ? 'website':'product';?>" />
-<meta property="og:url" content="<?php echo $fburl; ?>" />
-<meta property="og:image" content="" />
-<meta property="og:site_name" content="" />
-<meta property="fb:admins" content="100000353974994" />
 <?php print $head; ?><?php print $styles; ?>
 <!--[if lt IE 8]>
    <style type="text/css">
@@ -95,11 +85,6 @@ $fburl = 'http://www.widgetcity.com.ph/'.$_GET['q'];
             <?php print $help; ?> </div>
           <?php endif; ?>
           <div id="content-area" class="clear-block"> <?php print $content; ?>
-          	<?php if (arg(0) != 'homepage'): ?>
-            <div id="fb-root"></div>
-            <script src="http://connect.facebook.net/en_US/all.js#appId=120155901400985&amp;xfbml=1"></script>
-            <fb:like href="<?php echo $fburl;?>" send="true" width="450" show_faces="true" font="arial"></fb:like>
-            <?php endif; ?>
           </div>
           <?php endif; ?>
           <?php if ($content_bottom): ?>

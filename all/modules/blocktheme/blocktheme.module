@@ -1,0 +1,162 @@
+<?php
+// $Id: blocktheme.module,v 1.1.2.2.2.1 2008/07/03 14:44:01 gidema Exp $
+
+function blocktheme_menu() {
+  $items['admin/settings/blocktheme'] = array(
+    'title' => t('Block Theme'),
+    'description' => t('Allows the admin to define re-usable block templates that can be configured from block config screen'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('blocktheme_admin_settings'),
+    'access arguments' => array('administer access control')
+  );
+  return $items;
+}
+
+
+function blocktheme_admin_settings() {
+  $form = array();
+  $form['blocktheme_themes'] = array(
+    '#type' => 'textarea',
+    '#default_value' => variable_get('blocktheme_themes', ''),
+    '#title' => t('Custom Block Templates'),
+    '#description' => t('Enter in the form: <em>customtemplate|Friendly Name</em> Where customtemplate corresponds to a tpl file called blocktheme-customtemplate.tpl.php as well as to the value of an extra variable <em>$blocktheme</em> in the block templates'),
+  );
+  return system_settings_form($form);
+}
+
+
+function blocktheme_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#blocktheme':
+      return t('Allows the admin to define re-usable block templates that can be configured from block config screen');
+      break;
+    case 'admin/settings/blocktheme':
+      return t('BlockTheme allows an admin to define tpl files for standard block templates and provides a select box on the block configure form so the user can select a tpl file to use as opposed to having to override the templates by block ID.');
+      break;
+  }
+}
+
+/* form for updating a block */
+function blocktheme_form_block_admin_configure_alter(&$form, &$form_state) {
+  $module = $form['module']['#value'];
+  $delta = $form['delta']['#value'];
+  $var_name = $module .'-'. $delta;
+  $blockthemes = variable_get('blocktheme_themes', '');
+  $_sets = explode("\n", $blockthemes);
+  $options[] = t('<-- None -->');
+  
+  foreach ($_sets as $key => $value) {
+    $set = explode('|', $value);
+    $options[$set[0]] = $set[1];
+  }
+
+  $blocktheme = blocktheme_get();
+  
+  $form['block_settings']['blocktheme'] = array(
+    '#type' => 'select',
+    '#weight' => -1,
+    '#title' => t('Custom Theme'),
+    '#default_value' => $blocktheme[$var_name],
+    '#options' => $options,
+  );
+
+  $form['#submit'][] = 'blocktheme_update';
+}
+
+/* form for adding a new block */
+function blocktheme_form_block_add_block_form_alter(&$form, &$form_state) {
+
+  $blockthemes = variable_get('blocktheme_themes', '');
+  $_sets = explode("\n", $blockthemes);
+  $options[] = t('<-- None -->');
+  
+  foreach ($_sets as $key => $value) {
+    $set = explode('|', $value);
+    $options[$set[0]] = $set[1];
+  }
+  
+  $blocktheme = blocktheme_get();
+  
+  $form['block_settings']['blocktheme'] = array(
+    '#type' => 'select',
+    '#weight' => -1,
+    '#title' => t('Custom Theme'),
+    '#options' => $options,
+  );
+  
+  $form['#submit'][] = 'blocktheme_save';
+}
+
+function blocktheme_set($new_val) {  
+  variable_set('blocktheme', $new_val);
+}
+
+
+function blocktheme_get() {
+  static $blocktheme;
+  if (empty($blocktheme)) {
+    $blocktheme = variable_get('blocktheme', array());
+  }
+
+  return $blocktheme;
+}
+
+/* update an existing block after form has been submitted*/
+function blocktheme_update($form_id, &$form_state) {
+  $var_name = $form_state['values']['module'] .'-'.  $form_state['values']['delta'];
+
+  $blocktheme = blocktheme_get();
+ 
+  if (!$form_state['values']['blocktheme']) {
+    unset($blocktheme[$var_name]);
+  }
+  else {    
+    $blocktheme[$var_name] = $form_state['values']['blocktheme'];
+  }
+  blocktheme_set($blocktheme);
+}
+
+
+/* save a new block after form was submitted */
+function blocktheme_save($form_id, &$form_state) {
+  // first get the new delta value
+  $result = db_query("SELECT delta FROM {blocks} WHERE bid = '%s'", db_last_insert_id('boxes', 'bid'));
+  if ($delta_result = db_fetch_object($result)) {
+    $delta = $delta_result->delta;
+    $var_name = $form_state['values']['module'] .'-'.  $delta;
+  
+    $blocktheme = blocktheme_get();
+  
+    if (!$form_state['values']['blocktheme']) {
+      unset($blocktheme[$var_name]);
+    }
+    else {    
+      $blocktheme[$var_name] = $form_state['values']['blocktheme'];
+    }
+    blocktheme_set($blocktheme);
+  };
+}
+
+function blocktheme_get_theme(&$block) {  
+  $blocktheme = blocktheme_get();  
+  $var_name = $block->module .'-'. $block->delta;
+  if (isset($blocktheme[$var_name])) {
+    return $blocktheme[$var_name];
+  }
+}
+
+function blocktheme_preprocess_block(&$vars) {
+  if ($custom_theme = blocktheme_get_theme($vars['block']) ) {
+    // Added for downward compatability:
+    // Remove blocktheme- prefix if present
+    // Maybe use an update instead?
+    $len = strlen('blocktheme-');
+    if (strncmp($custom_theme, 'blocktheme-', $len) == 0) {
+      $custom_theme = substr($custom_theme, $len);
+    }
+    $vars['blocktheme'] = $custom_theme;
+  $vars['template_files'][] = 'blocktheme-'. $custom_theme;
+  }
+} 
+
+//Is it better to unserialize a huge array, or to use a hacky string based namespace?

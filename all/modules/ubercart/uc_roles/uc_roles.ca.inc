@@ -1,10 +1,9 @@
 <?php
-// $Id: uc_roles.ca.inc,v 1.1.2.13 2009/10/20 20:58:08 islandusurper Exp $
 
 /**
  * @file
- * This file contains the Conditional Actions hooks and functions necessary to make the
- * roles-related entity, conditions, events, and actions work.
+ * This file contains the Conditional Actions hooks and functions necessary to
+ * make the roles-related entity, conditions, events, and actions work.
  */
 
 /******************************************************************************
@@ -12,7 +11,7 @@
  ******************************************************************************/
 
 /**
- * Implementation of hook_ca_entity().
+ * Implements hook_ca_entity().
  *
  * An entity is defined in order to get a role expiration down
  * to token in the email.
@@ -28,7 +27,7 @@ function uc_roles_ca_entity() {
 }
 
 /**
- * Implementation of hook_ca_predicate().
+ * Implements hook_ca_predicate().
  */
 function uc_roles_ca_predicate() {
   $predicates = array();
@@ -45,23 +44,12 @@ function uc_roles_ca_predicate() {
       '#conditions' => array(
         array(
           '#name' => 'uc_order_status_condition',
-          '#title' => t('If the original order status was not Completed.'),
-          '#argument_map' => array(
-            'order' => 'order',
-          ),
-          '#settings' => array(
-            'negate' => TRUE,
-            'order_status' => 'completed',
-          ),
-        ),
-        array(
-          '#name' => 'uc_order_status_condition',
-          '#title' => t('If the updated order status is Completed.'),
+          '#title' => t('If the updated order status is payment received.'),
           '#argument_map' => array(
             'order' => 'updated_order',
           ),
           '#settings' => array(
-            'order_status' => 'completed',
+            'order_status' => 'payment_received',
           ),
         ),
       ),
@@ -71,7 +59,7 @@ function uc_roles_ca_predicate() {
         '#name' => 'uc_roles_order_renew',
         '#title' => t('Update all role expirations for this order.'),
         '#argument_map' => array(
-          'order' => 'order',
+          'order' => 'updated_order',
         ),
         '#settings' => array(
           'message' => FALSE,
@@ -186,7 +174,7 @@ function uc_roles_ca_predicate() {
 }
 
 /**
- * Implementation of hook_ca_action().
+ * Implements hook_ca_action().
  */
 function uc_roles_ca_action() {
   // Renew a role expiration.
@@ -240,7 +228,7 @@ function uc_roles_ca_action() {
 }
 
 /**
- * Implementation of hook_ca_trigger().
+ * Implements hook_ca_trigger().
  */
 function uc_roles_ca_trigger() {
   $order = array(
@@ -296,7 +284,7 @@ function uc_roles_ca_trigger() {
 }
 
 /**
- * Send an email with order and role replacement tokens.
+ * Sends an email with order and role replacement tokens.
  *
  * The recipients, subject, and message fields take order token replacements.
  *
@@ -340,7 +328,7 @@ function uc_roles_action_order_email_form($form_state, $settings = array()) {
 }
 
 /**
- * Send an email with order and role replacement tokens.
+ * Sends an email with order and role replacement tokens.
  *
  * The recipients, subject, and message fields take order token replacements.
  *
@@ -366,7 +354,7 @@ function uc_roles_action_user_email($account, $role_expiration, $settings) {
     $sent = drupal_mail('uc_order', 'action-mail', $email, uc_store_mail_recipient_language($email), $settings, $settings['from']);
 
     if (!$sent['result']) {
-      watchdog('ca', 'Attempt to e-mail @email concerning order @order_id failed.', array('@email' => $email, '@order_id' => $order->order_id), WATCHDOG_ERROR);
+      watchdog('ca', 'Attempt to e-mail @email concerning role notification failed.', array('@email' => $email), WATCHDOG_ERROR);
     }
   }
 }
@@ -381,64 +369,7 @@ function uc_roles_action_user_email_form($form_state, $settings = array()) {
 }
 
 /**
- * Build an email settings form.
- */
-function ca_build_email_form($form_state, $settings, $token_filters) {
-  $form = array();
-
-  $form['from'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Sender'),
-    '#default_value' => $settings['from'],
-    '#description' => t('The "From" address.'),
-    '#required' => TRUE,
-  );
-  $form['addresses'] = array(
-    '#type' => 'textarea',
-    '#title' => t('Recipients'),
-    '#default_value' => $settings['addresses'],
-    '#description' => t('Enter the email addresses to receive the notifications, one on each line. You may use order tokens for dynamic email addresses.'),
-    '#required' => TRUE,
-  );
-  $form['subject'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Subject'),
-    '#default_value' => $settings['subject'],
-    '#required' => TRUE,
-  );
-  $form['message'] = array(
-    '#type' => 'textarea',
-    '#title' => t('Message'),
-    '#default_value' => $settings['message'],
-  );
-
-  // We add the #is_format element to allow us to locate and configure the filters.
-  $form['format'] = filter_form($settings['format']) + array('#is_format' => TRUE);
-
-  $form['token_help'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Replacement patterns'),
-    '#description' => t('You can make use of the replacement patterns in the recipients field, the subject, and the message body.'),
-    '#collapsible' => TRUE,
-    '#collapsed' => TRUE,
-  );
-  foreach ($token_filters as $name) {
-    $form['token_help'][$name] = array(
-      '#type' => 'fieldset',
-      '#title' => t('@name replacement patterns', array('@name' => drupal_ucfirst($name))),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-    );
-    $form['token_help'][$name]['content'] = array(
-      '#value' => theme('token_help', $name),
-    );
-  }
-
-  return $form;
-}
-
-/**
- * Renew an orders product roles.
+ * Renews an orders product roles.
  *
  * This function updates expiration time on all roles found on all products
  * on a given order. First, the order user is loaded, then the order's products
@@ -450,6 +381,7 @@ function ca_build_email_form($form_state, $settings, $token_filters) {
  *
  * @param $order
  *   An Ubercart order object.
+ *
  * @see uc_roles_action_order_renew_form()
  */
 function uc_roles_action_order_renew($order, $settings) {
@@ -472,10 +404,10 @@ function uc_roles_action_order_renew($order, $settings) {
       $existing_role = db_fetch_object(db_query("SELECT * FROM {uc_roles_expirations} WHERE uid = %d AND rid = %d", $account->uid, $role->rid));
 
       // Determine the expiration timestamp for the role.
-      $expiration = _uc_roles_product_get_expiration($role, $product->qty, !is_null($existing_role->expiration) ? $existing_role->expiration : NULL);
+      $expiration = _uc_roles_product_get_expiration($role, $product->qty, isset($existing_role->expiration) ? $existing_role->expiration : NULL);
 
       // Leave an order comment.
-      if (!is_null($existing_role->expiration)) {
+      if (isset($existing_role->expiration)) {
         $op = 'renew';
         $comment = t('Customer user role %role renewed.', array('%role' => _uc_roles_get_name($role->rid)));
 
@@ -499,7 +431,7 @@ function uc_roles_action_order_renew($order, $settings) {
         $new_expiration->expiration = NULL;
       }
 
-      uc_order_comment_save($order->order_id, $user->uid, $comment);
+      uc_order_comment_save($order->order_id, $account->uid, $comment);
 
       // Trigger role email.
       ca_pull_trigger('uc_roles_notify_'. $op, $order, $new_expiration);
@@ -521,4 +453,3 @@ function uc_roles_action_order_renew_form($form_state, $settings = array()) {
 
   return $form;
 }
-

@@ -1,5 +1,4 @@
 <?php
-// $Id: themekey_properties.module,v 1.8.2.18 2010/08/20 08:55:52 mkalkbrenner Exp $
 
 /**
  * @file
@@ -29,6 +28,8 @@ function themekey_properties_themekey_load_validators() {
  * - system:query_param
  * - system:query_string
  * - system:cookie
+ * - system:http_header
+ * - system:post
  * - system:server_ip
  * - system:server_port
  * - system:server_name
@@ -62,7 +63,7 @@ function themekey_properties_themekey_properties() {
   $attributes = array();
 
   $attributes['system:query_param'] = array(
-    'description' => t("System: Query Parameter - Every single query parameter other than 'q' and it's value if present. Note that values are url decoded. Example: '?q=node&foo=bar&dummy&filter=tid%3A27' will cause three entries 'foo=bar', 'dummy' and 'filter=tid:27'. For 'q' see property drupal:get_q."),
+    'description' => t("System: Query Parameter - Every single query parameter other than 'q' and its value if present. Note that values are url decoded. Example: '?q=node&foo=bar&dummy&filter=tid%3A27' will cause three entries 'foo=bar', 'dummy' and 'filter=tid:27'. For 'q' see property drupal:get_q."),
     'page cache' => THEMEKEY_PAGECACHE_SUPPORTED,
   );
 
@@ -72,7 +73,17 @@ function themekey_properties_themekey_properties() {
   );
 
   $attributes['system:cookie'] = array(
-    'description' => t("System: Cookie - Every single cookie and it's value if present will be formatted like 'COOKIE_NAME=COOKIE_VALUE'"),
+    'description' => t("System: Cookie - Every single cookie and its value if present will be formatted like 'COOKIE_NAME=COOKIE_VALUE'"),
+    'page cache' => THEMEKEY_PAGECACHE_UNSUPPORTED,
+  );
+
+  $attributes['system:http_header'] = array(
+    'description' => t("System: HTTP Header - Every single HTTP header and its value if present will be formatted like 'HEADER_NAME=HEADER_VALUE'"),
+    'page cache' => THEMEKEY_PAGECACHE_UNSUPPORTED,
+  );
+
+  $attributes['system:post'] = array(
+    'description' => t("System: POST - Every single POST value formatted like 'POST_VARIABLE_NAME=POST_VARIABLE_VALUE'. Example: form_id=node_form"),
     'page cache' => THEMEKEY_PAGECACHE_UNSUPPORTED,
   );
 
@@ -165,12 +176,12 @@ function themekey_properties_themekey_properties() {
   );
 
   $attributes['system:session'] = array(
-    'description' => t("System: Session - Every single session parameter and it's value if value is present and a simple type (string, integer, boolean). Booleans are represented as integers '1' as TRUE and '0' as FALSE."),
+    'description' => t("System: Session - Every single session parameter and its value if value is present and a simple type (string, integer, boolean). Booleans are represented as integers '1' as TRUE and '0' as FALSE."),
     'page cache' => THEMEKEY_PAGECACHE_SUPPORTED,
   );
 
   $attributes['system:random'] = array(
-    'description' => t("System: Random - A random value that could be '0' or 1'."),
+    'description' => t("System: Random - A random value that could be '0' or '1'."),
     'validator' => 'themekey_validator_nummeric_boolean',
     'page cache' => THEMEKEY_PAGECACHE_UNSUPPORTED,
   );
@@ -204,6 +215,12 @@ function themekey_properties_themekey_properties() {
   $maps[] = array('src'       => 'system:dummy',
                   'dst'       => 'system:cookie',
                   'callback'  => 'themekey_properties_dummy2cookie');
+  $maps[] = array('src'       => 'system:dummy',
+                  'dst'       => 'system:http_header',
+                  'callback'  => 'themekey_properties_dummy2http_header');
+  $maps[] = array('src'       => 'system:dummy',
+                  'dst'       => 'system:post',
+                  'callback'  => 'themekey_properties_dummy2post');
   $maps[] = array('src'       => 'system:dummy',
                   'dst'       => 'system:query_string',
                   'callback'  => 'themekey_properties_dummy2query_string');
@@ -309,6 +326,30 @@ function themekey_properties_dummy2query_param($dummy) {
  * with the aid of another ThemeKey property (source).
  *
  * src: system:dummy
+ * dst: system:http_header
+ *
+ * @param $dummy
+ *   string containing current value of ThemeKey property system:dummy
+ *
+ * @return
+ *   array of system:http_header values
+ *   or NULL if no value could be mapped
+ */
+function themekey_properties_dummy2http_header($dummy) {
+  $filtered_headers = array();
+  foreach (apache_request_headers() as $key => $value) {
+    $filtered_headers[] = $key . (!empty($value) ? '=' . $value : '');
+  }
+  return count($filtered_headers) ? array_unique($filtered_headers) : NULL;
+}
+
+
+/**
+ * ThemeKey mapping function to set a
+ * ThemeKey property's value (destination)
+ * with the aid of another ThemeKey property (source).
+ *
+ * src: system:dummy
  * dst: system:cookie
  *
  * @param $dummy
@@ -324,6 +365,30 @@ function themekey_properties_dummy2cookie($dummy) {
     $filtered_cookies[] = $key . (!empty($value) ? '=' . $value : '');
   }
   return count($filtered_cookies) ? array_unique($filtered_cookies) : NULL;
+}
+
+
+/**
+ * ThemeKey mapping function to set a
+ * ThemeKey property's value (destination)
+ * with the aid of another ThemeKey property (source).
+ *
+ * src: system:dummy
+ * dst: system:post
+ *
+ * @param $dummy
+ *   string containing current value of ThemeKey property system:dummy
+ *
+ * @return
+ *   array of system:post values
+ *   or NULL if no value could be mapped
+ */
+function themekey_properties_dummy2post($dummy) {
+  $filtered_post = array();
+  foreach ($_POST as $key => $value) {
+    $filtered_post[] = $key . (!empty($value) ? '=' . $value : '');
+  }
+  return count($filtered_post) ? array_unique($filtered_post) : NULL;
 }
 
 

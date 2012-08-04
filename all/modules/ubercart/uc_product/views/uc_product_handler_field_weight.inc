@@ -1,5 +1,4 @@
 <?php
-// $Id: uc_product_handler_field_weight.inc,v 1.1.2.4 2009/10/20 20:58:06 islandusurper Exp $
 
 /**
  * @file
@@ -7,15 +6,23 @@
  */
 
 /**
- * Return a formatted weight value to display in the View.
+ * Returns a formatted weight value to display in the View.
  */
 class uc_product_handler_field_weight extends views_handler_field_numeric {
-  function options(&$options) {
-    parent::options($options);
 
-    $options['format'] = 'uc_weight';
+  /**
+   * Overrides views_handler::option_definition().
+   */
+  function option_definition() {
+    $options = parent::option_definition();
+
+    $options['format'] = array('default' => 'uc_weight');
+    return $options;
   }
 
+  /**
+   * Overrides views_handler::options_form().
+   */
   function options_form(&$form, &$form_state) {
     parent::options_form($form, $form_state);
 
@@ -49,6 +56,9 @@ class uc_product_handler_field_weight extends views_handler_field_numeric {
     }
   }
 
+  /**
+   * Overrides views_handler_field::render().
+   */
   function render($values) {
     if ($this->options['format'] == 'numeric') {
       return parent::render($values);

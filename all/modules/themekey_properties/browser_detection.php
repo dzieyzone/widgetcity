@@ -1,5 +1,4 @@
 <?php
-// $Id: browser_detection.php,v 1.2.2.4 2010/08/16 13:35:19 mkalkbrenner Exp $
 
 /**
  * @file
@@ -8,7 +7,7 @@
  * @see http://www.dinke.net/blog/2005/10/30/browser-detection/en/
  * @see themekey_properties.module
  *
- * Here's a snippet of Dragans mail response as we asked him to reuse his code:
+ * Here's a snippet of Dragan's mail response when we asked for permission to reuse his code:
  *
  * > Hello Markus,
  * >
@@ -161,6 +160,9 @@ class BrowserDetection {
     //winxp
     if (strpos($useragent, 'windows nt 5.1') !== FALSE) {
       return 'Windows XP';
+    }
+    elseif (strpos($useragent, 'windows nt 6.1') !== FALSE) {
+      return 'Windows 7';
     }
     elseif (strpos($useragent, 'windows nt 6.0') !== FALSE) {
       return 'Windows Vista';

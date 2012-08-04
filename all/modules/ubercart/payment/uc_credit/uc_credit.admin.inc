@@ -1,13 +1,13 @@
 <?php
-// $Id: uc_credit.admin.inc,v 1.1.2.5 2009/08/17 21:27:56 islandusurper Exp $
 
 /**
  * @file
  * Credit administration menu items.
- *
  */
 
-// Displays the credit card terminal page.
+/**
+ * Displays the credit card terminal page.
+ */
 function uc_credit_terminal($order) {
   $output = l(t('Return to order view screen.'), 'admin/store/orders/'. $order->order_id);
 
@@ -32,7 +32,12 @@ function uc_credit_terminal($order) {
   return $output;
 }
 
-// Displays the credit card terminal form for administrators.
+/**
+ * Displays the credit card terminal form for administrators.
+ *
+ * @see uc_credit_terminal_form_validate()
+ * @see uc_credit_terminal_form_submit()
+ */
 function uc_credit_terminal_form($form_state, $order, $lock_amount = FALSE) {
   // Get the transaction types available to our default gateway.
   $types = uc_credit_gateway_txn_types(uc_credit_default_gateway());
@@ -217,8 +222,14 @@ function uc_credit_terminal_form($form_state, $order, $lock_amount = FALSE) {
   return $form;
 }
 
+/**
+ * Validation handler for credit terminal form.
+ *
+ * @see uc_credit_terminal_form()
+ * @see uc_credit_terminal_form_submit()
+ */
 function uc_credit_terminal_form_validate($form, &$form_state) {
-  switch ($form_states['values']['op']) {
+  switch ($form_state['values']['op']) {
     case t('Charge amount'):
     case t('Authorize amount only'):
     case t('Capture amount to this authorization'):
@@ -233,6 +244,12 @@ function uc_credit_terminal_form_validate($form, &$form_state) {
   }
 }
 
+/**
+ * Submit handler for credit terminal form.
+ *
+ * @see uc_credit_terminal_form()
+ * @see uc_credit_terminal_form_validate()
+ */
 function uc_credit_terminal_form_submit($form, &$form_state) {
   // Load the order.
   $order = uc_order_load($form_state['values']['order_id']);
@@ -299,7 +316,7 @@ function uc_credit_terminal_form_submit($form, &$form_state) {
   $result = uc_payment_process('credit', $form_state['values']['order_id'], $form_state['values']['amount'], $data, TRUE, NULL, FALSE);
 
   if ($result) {
-    $crypt = new uc_encryption_class;
+    $crypt = new uc_encryption_class();
 
     // Load up the existing data array.
     $data = db_result(db_query("SELECT data FROM {uc_orders} WHERE order_id = %d", $form_state['values']['order_id']));
@@ -317,7 +334,7 @@ function uc_credit_terminal_form_submit($form, &$form_state) {
     }
 
     // Stuff the serialized and encrypted CC details into the array.
-    $data['cc_data'] = $crypt->encrypt(uc_credit_encryption_key(), serialize($cc_data));
+    $data['cc_data'] = $crypt->encrypt(uc_credit_encryption_key(), base64_encode(serialize($cc_data)));
     uc_store_encryption_errors($crypt, 'uc_credit');
 
     // Save it again.
@@ -335,4 +352,3 @@ function uc_credit_terminal_form_submit($form, &$form_state) {
 
   $form_state['redirect'] = 'admin/store/orders/'. $form_state['values']['order_id'];
 }
-

@@ -1,5 +1,4 @@
 <?php
-// $Id: uc_product.pages.inc,v 1.1.2.7 2009/09/11 19:04:55 islandusurper Exp $
 
 /**
  * @file
@@ -7,7 +6,7 @@
  */
 
 /**
- * Return an autocomplete list for product nodes.
+ * Returns an autocomplete list for product nodes.
  *
  * Using this autocomplete on a textfield will autocomplete based on product
  * titles or SKUs and leave the nid in the textfield.
@@ -24,4 +23,3 @@ function uc_product_title_sku_autocomplete($string = '') {
 
   drupal_json($matches);
 }
-
