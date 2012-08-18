@@ -5,6 +5,10 @@ function mod_widgetcity_jcarousel_skin_info() {
     'title' => t('Widgetcity Skin'),
     'file' => 'skins/widgetcity/jcarousel.css',
   );
+  $skins['wc'] = array(
+    'title' => t('Widgetcity Classic Skin'),
+    'file' => 'skins/wc/jcarousel.css',
+  );
 
   return $skins;
 }
