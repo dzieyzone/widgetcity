@@ -1,0 +1,15 @@
+<?php
+/**
+ * Implementation of hook_uninstall()
+ */
+function lazy_image_loader_uninstall() {
+  variable_del('lazy_image_loader_classes');
+  variable_del('lazy_image_loader_threshold');
+  variable_del('lazy_image_loader_event');
+  variable_del('lazy_image_loader_effect');
+  variable_del('lazy_image_loader_failurelimit');
+  variable_del('lazy_image_loader_placeholder_type');
+  variable_del('lazy_image_loader_placeholder_custom_image');
+  variable_del('lazy_image_loader_access');
+  variable_del('lazy_image_loader_access_pages');
+}

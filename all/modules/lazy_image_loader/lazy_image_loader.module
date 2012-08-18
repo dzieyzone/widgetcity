@@ -1,0 +1,126 @@
+<?php
+/**
+* The main file of module which includs both view and admin
+*/
+
+/**
+ * Implementation of hook_menu().
+ */
+function lazy_image_loader_menu() {
+  $items = array();
+  $items['admin/settings/lazy_image_loader'] = array(
+    'title' => 'Lazy image loading',
+    'description' => 'Configure the lazy loading of images.',
+    'access arguments' => array('administer site configuration'),
+    'page arguments' => array('lazy_image_loader_admin_settings'),
+	'page callback' => 'drupal_get_form',
+    'file' => 'lazy_image_loader.admin.inc'
+  );
+  return $items;
+}
+
+
+/**
+ * Implementation of hook_init().
+ */
+function lazy_image_loader_init() {
+  if (_lazy_image_loader_page_match()) {
+    $path = drupal_get_path('module', 'lazy_image_loader');
+
+    drupal_add_js($path . '/jquery.lazyload.js', 'module', 'header', true);  
+    drupal_add_js('$(function() { 
+      $("' . variable_get('lazy_image_loader_classes', '.content img') . '").lazyload({
+  	    threshhold 	: ' . variable_get('lazy_image_loader_threshold', 0) . ',
+        placeholder : "'. _lazy_image_loader_get_placeholder_image().'",
+        event 		: "' . variable_get('lazy_image_loader_event', 'scroll') . '",
+        effect 		: "' . variable_get('lazy_image_loader_effect', 'show') . '",
+        failurelimit	: ' . variable_get('lazy_image_loader_failurelimit', 10) . '
+      });
+    });', 'inline', 'header', false);
+  }
+}
+
+
+/**
+* Getting placeholder image path according to settings
+*/
+function _lazy_image_loader_get_placeholder_image() {
+  $path = base_path().drupal_get_path('module', 'lazy_image_loader');
+  $type=variable_get('lazy_image_loader_placeholder_type',1);
+
+  if ($type==0) {
+    $result=$path.'/images/grey.gif';
+  } elseif ($type==1) {
+    $result=$path.'/images/transparent.gif';
+  } elseif ($type==2) {
+    $result=file_directory_path().'/'.variable_get('lazy_image_loader_placeholder_custom_image');
+  }
+  
+  return $result;
+}
+
+/**
+ * Determine if lazy_image_loader has permission to be used on the current page.
+ *
+ * @return
+ *   TRUE if can render, FALSE if not allowed.
+ */
+function _lazy_image_loader_page_match() {
+  global $user;
+  $page_match = FALSE;
+  $pages=variable_get('lazy_image_loader_access_pages','');
+  $page_access=variable_get('lazy_image_loader_access',false);
+
+  // Match path if necessary
+  if ($pages)
+  {
+      // If the PHP option wasn't selected
+      if ($page_access < 2) {
+        $path = drupal_get_path_alias($_GET['q']);
+		// Compare with the internal and path alias (if any).
+		$page_match=drupal_match_path($path,$pages);
+		
+        if ($path != $_GET['q']) {
+          $page_match = $page_match || drupal_match_path($_GET['q'], $pages);
+        }
+
+        // When $page_access has a value of 0, the block is displayed on
+        // all pages except those listed in $pages. When set to 1, it
+        // is displayed only on those pages listed in $pages.
+        $page_match = !($page_access xor $page_match);
+      }
+      else 
+	  {
+        $page_match = drupal_eval(variable_get('lazy_image_loader_access_pages',''));
+      }
+  }
+  // No pages were specified to block so show on all
+  else 
+  {
+    $page_match = TRUE;
+  }
+  return $page_match;
+}
+
+
+/**
+* Display help and module information
+* @param section which section of the site we're displaying help
+* @return help text for section
+*/
+function lazy_image_loader_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#lazy_image_loader':
+      $output = '<p>'. t('The lazy image loading module loads page images only if they were visible to or requested by visitor.') .'</p>';
+      return $output;
+    case 'admin/settings/lazy_image_loader':
+      $output = t('<p>The lazy image loading module loads content images only if they were visible to visitor. This page lets you change the way it works.</p>
+      <p><strong>This module currently has few limitations : </strong></p>
+	  <ul>
+      <li>Due to webkit bug #6656 Lazy Loading wont give you any improvements in Safari. It will load all images you wanted it or not.</li>
+      <li>It seems jQuery 1.3.x breaks the plugin for IE. All images get loaded in the background even when they should not. I am working on it. In the meanwhile stay with jQuery 1.2.6.</li>
+      <li>Also you are using Mint you should have mint tag in the header of the page. Mint tag in the end of the page interferes with Lazy Load plugin. This is rather peculiar problem. If somebody finds an answer let me know.</li>
+	  <ul>');
+      return($output);
+  }
+}
