@@ -1,0 +1,84 @@
+<?php // $Id: viewscarousel3d.module,v 1.1.2.1 2010/08/15 21:44:32 rashad612 Exp $
+
+
+/**
+ * Implementation of hook_views_api().
+ *
+ */
+function viewscarousel3d_views_api() {
+  return array('api' => 2);
+}// end function viewscarousel3d_views_api;
+
+function template_preprocess_viewscarousel3d(&$vars) {
+  
+  $view = $vars['view'];
+  $options = $vars['options'];
+  
+  // I think the jQuery plugin has a bug, so it can not accept selector name that contains - or _ 
+  $vars['current_display'] = 'v3d' . preg_replace("/-|_/i", '', $view->current_display);
+  
+  $settings = array(
+    'display_id' => $vars['current_display'],
+    'minScale' => $options['minScale'],
+    'reflHeight' => $options['reflHeight'],
+    'reflGap' => $options['reflGap'],
+    'reflOpacity' => $options['reflOpacity'],
+    'FPS' => $options['FPS'],
+    'speed' => $options['speed'],
+    'autoRotate' => $options['autoRotate'],
+    'autoRotateDelay' => $options['autoRotateDelay'],
+    'mouseWheel' => ($options['mouseWheel'])? TRUE : FALSE,
+    'titleBox' => ($options['titleBox'])? TRUE : FALSE,
+    'bringToFront' => ($options['bringToFront'])? TRUE : FALSE,
+    'showButtons' => ($options['showButtons'])? TRUE : FALSE
+  );
+  
+  $path = drupal_get_path('module', 'viewscarousel3d');
+  
+  drupal_add_css($path . '/css/viewscarousel3d.css');
+
+  if($options['mouseWheel'])
+    drupal_add_js($path . '/js/jquery.mousewheel.min.js');
+  
+  drupal_add_js($path . '/js/cloud-carousel.1.0.4.min.js');
+  
+  
+  
+  
+  drupal_add_js(array('viewscarousel3d' => array('viewscarousel3d_settings' => $settings)), 'setting');
+ 
+  drupal_add_js($path . '/js/viewscarousel3d.js');
+  
+}// end function template_preprocess_viewscarousel3d;
+
+
+/**
+ * Implementation of template_preprocess_views_ui_edit_view().
+ * 
+ *  To add conditional JavaScript effect, in view style settings.
+ */
+function viewscarousel3d_preprocess_views_ui_edit_view(&$vars) {
+  drupal_add_js(drupal_get_path('module', 'viewscarousel3d') . '/js/viewscarousel3d_options.js');
+}// end function viewscarousel3d_preprocess_views_ui_edit_view;
+
+/**
+ * Only returns true the first time it's called for an id
+ *
+ * @param $id
+ *  A uniqe view id.
+ *
+ * @return bool
+ *  TRUE for the first time called for a given $id
+ *  FALSE for each time after that
+ */
+function theme_viewscarousel3d_display_item($id) {
+  static $display = array();
+
+  if (!isset($display[$id])) $display[$id] = FALSE;
+
+  $output = $display[$id];
+
+  if ($display[$id] == FALSE) $display[$id] = TRUE;
+
+  return $output;
+}

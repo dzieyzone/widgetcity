@@ -1,0 +1,50 @@
+/* $Id: viewscarousel3d.css,v 1.1.2.1 2010/08/15 21:44:32 rashad612 Exp $ */
+
+.views-carousel-3d-wrapper {
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background: #000;
+}
+
+.viewscarousel3d {
+  width: 90%;
+  margin: 0 auto;
+  height: 400px;
+  overflow: scroll;
+  position: relative;
+  z-index: 1000;
+}
+
+a.viewscarousel3d-btn {
+  display: block;
+  position: absolute;
+  width: 35px;
+  height: 35px;
+  top: 50%;
+  z-index: 1001;
+}
+
+
+a.viewscarousel3d-left-btn { 
+  left: 5px;
+  background: transparent url(../images/buttons.png) scroll no-repeat 0 0; 
+}
+
+a.viewscarousel3d-left-btn:hover { background-position: 0 -38px; }
+
+a.viewscarousel3d-right-btn { 
+  right: 5px;
+  background: transparent url(../images/buttons.png) scroll no-repeat -35px 0;
+}
+
+a.viewscarousel3d-right-btn:hover { background-position: -35px -38px; }
+
+div.viewscarousel3d-title-text {
+  margin: 10px auto;
+  text-align: center;
+  color: #ccc;
+  font-size: 1.12em;
+  font-weight: bold;
+  text-shadow: #fff 0 3px 5px;
+}

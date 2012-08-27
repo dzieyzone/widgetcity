@@ -1,0 +1,20 @@
+; $Id: viewscarousel3d.info,v 1.3.2.1 2010/08/15 21:44:32 rashad612 Exp $
+name = 3D Views Carousel
+description = A Views plugin, to display image item as rotated 3D carousel.
+package = Views
+core = 6.x
+dependencies[] = views
+
+; Information added by drupal.org packaging script on 2010-07-11
+version = "6.x-1.x-dev"
+core = "6.x"
+project = "viewscarousel3d"
+datestamp = "1278836270"
+
+
+; Information added by drupal.org packaging script on 2010-08-15
+version = "6.x-1.2"
+core = "6.x"
+project = "viewscarousel3d"
+datestamp = "1281916594"
+
