@@ -9,6 +9,7 @@ stylesheets[all][] = css/fusion-wcm-style.css
 
 regions[sidebar_first] = sidebar first
 regions[sidebar_last] = sidebar last
+regions[header_banner] = header banner
 regions[header_top] = header top
 regions[header] = header
 regions[preface_top] = preface top
@@ -31,6 +32,8 @@ features[] = search
 features[] = favicon
 features[] = primary_links
 features[] = secondary_links
+
+scripts[] = js/global.js
 
 ; Default theme settings
 settings[theme_grid] = grid24-960

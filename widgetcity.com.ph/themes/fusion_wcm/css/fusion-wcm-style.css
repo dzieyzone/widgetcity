@@ -11,12 +11,14 @@ body {
 a,
 a:link,
 a:visited {
+  color: #EC4332;
 }
 
 /* Hover/active link styles. Don't forget :focus for accessibility */
 a:hover,
 a:focus,
 a:active {
+  color: #000000;
 }
 
 
@@ -75,9 +77,17 @@ html {
   background: #000 url('../images/topLineRed.jpg') no-repeat bottom center;
   margin-bottom: 10px;
 }
+
 .header-top-inner {
   background:url('../images/bg-menu.png') repeat-x;
+  -webkit-border-bottom-right-radius: 5px;
+  -webkit-border-bottom-left-radius: 5px;
+  -moz-border-radius-bottomright: 5px;
+  -moz-border-radius-bottomleft: 5px;
+  border-bottom-right-radius: 5px;
+  border-bottom-left-radius: 5px;
 }
+
 .header-group-inner {
   background:url('../images/bg-header.png') no-repeat;
   margin: 0 10px 10px 10px;
@@ -110,12 +120,35 @@ html {
 
 /*  Main Area (content + sidebars + preface bottom + postscript top)
 -------------------------------------------------------------- */
+#sidebar-first {
+  position: relative;
+}
+#sidebar-first-inner {
+  position: absolute;
+  width: 120px;
+}
+#sidebar-first-inner.fixed{
+  position: fixed;
+  top: 0;
+}
+
+#main-group {
+  float: right;
+}
+
 .main-wrapper {
 }
 
 .main-inner {
   background: #FFF;
   padding-top: 30px;
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  border-radius: 5px;
+}
+
+.preface-top-inner {
+  padding: 5px 0;
 }
 
 /* Default node styles
@@ -212,6 +245,9 @@ html {
 #content-tabs ul.primary li a:focus,
 #content-tabs ul.secondary li a:hover,
 #content-tabs ul.secondary li a:focus {
+    /*  */
+    
+  
   border-bottom: 4px solid #777;
   color: #777;
   padding-bottom: 2px;
@@ -397,14 +433,42 @@ ul.uc-categories {
 /* Theme overrides
  * 
  */
-ul.nice-menu-right, ul.nice-menu-left, ul.nice-menu-right li, ul.nice-menu-left li {
-  width: 105px;
+ul.nice-menu-right,
+ul.nice-menu-left {
+  width: 100%;
+  z-index: 1000;
 }
+
+ul.nice-menu-right,
+ul.nice-menu-right ul {
+  -webkit-box-shadow:  0px 0px 1px 1px #000000;
+  box-shadow:  0px 0px 1px 1px #000000;
+  border-top: 0;
+  -webkit-border-radius: 2px;
+  border-radius: 2px;
+
+}
+ul.nice-menu-right li,
+ul.nice-menu-left li {
+  width: 100%;
+  border: 0;
+}
+
+ul.nice-menu-right ul ul,
 ul.nice-menu-right ul {
   width: 105px;
   left: 105px;
 }
 
+ul.nice-menu ul li {
+  width: 100%
+}
+
 .row, .nested, .block {
   overflow: visible;
+}
+
+ul.nice-menu a {
+  padding: 0.3em 12px 0.3em 5px;
+  color: #EC4332;
 }
