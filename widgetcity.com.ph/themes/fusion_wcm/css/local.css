@@ -47,9 +47,88 @@
 }
 
 .product-teaser .teaser-image {
-  
+  height: 115px;
+  display: table-cell;
+  vertical-align: middle;
+}
+
+.product-teaser .teaser-detail .list-price {
+  text-decoration: line-through;
+  font-size: 80%;
+  color: #CCC;
 }
 
 .product-teaser .teaser-detail h3.title {
-  
+  font-size: 100%;
+  margin: 0;
 }
+
+#block-mod_widgetcity-user_widgetcity {
+  color: #FFFFFF;
+}
+
+.service-line-mail {
+  height: 65px;
+}
+
+.service-line-mail .mail {
+  padding: 10px 0 0 0;
+  display: block;
+  font-size: 22px;
+}
+
+.service-line-connect {
+  height: 35px;
+  padding: 7px 0 0 10px;
+}
+.service-line-connect .contact{
+  font-size: 16px;
+}
+.service-line-connect .like-us{
+  padding-left: 25px;
+}
+.service-line-terms {
+  font-size: 12px;
+  padding-left: 20px;
+}
+
+#block-search-0,
+#block-user-0 {
+  margin: 0;
+}
+#search-block-form #edit-search-block-form-1-wrapper{
+  width: 100px;
+  float: left;
+}
+#search-block-form .form-submit {
+  margin: 14px 0 0 10px;
+  float: left;
+}
+#user-login-form .form-text{
+  width: 120px;
+}
+#user-login-form label {
+  float: left;
+  width: 80px;
+}
+#user-login-form .form-item {
+  margin:5px 0 0 0;
+}
+#user-login-form .form-submit {
+  float: left;
+  margin-right: 5px;
+}
+.view-taxonomy-term .view-content .item-list li {
+  float: left;
+  margin: 0 5px 10px 5px;
+  width: 120px;
+  height: 200px;
+  list-style: none;
+  background: #FFFFFF;
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  border-radius: 5px;
+}
+
+.view-taxonomy-term .view-content .item-list li .product-teaser{
+  padding: 5px;

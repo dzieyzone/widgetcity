@@ -11,7 +11,8 @@ body {
 a,
 a:link,
 a:visited {
-  color: #EC4332;
+  /*color: #EC4332;*/
+  color: #e21414;
 }
 
 /* Hover/active link styles. Don't forget :focus for accessibility */
@@ -21,6 +22,11 @@ a:active {
   color: #000000;
 }
 
+#block-block-18 a:hover,
+#block-block-18 a:focus,
+#block-block-18 a:active {
+  color: #FFF4F4;
+}
 
 /* Specific Typography
 -------------------------------------------------------------- */
@@ -93,6 +99,14 @@ html {
   margin: 0 10px 10px 10px;
   height: 345px;
 }
+#block-user-0,
+#footer-message-wrapper {
+  color: #FFFFFF;
+}
+
+#block-google_admanager-81284f16aaddabe99a890bb2d773e912 .content {
+  margin: 10px 0 0 0;
+}
 /* Primary Menu
 /-------------------------------------------------------------- */
 /* Add general styles for primary menu here, such as typography, borders, floats,
@@ -140,7 +154,7 @@ html {
 }
 
 .main-inner {
-  background: #FFF;
+  background: #E6E8FA;
   padding-top: 30px;
   -webkit-border-radius: 5px;
   -moz-border-radius: 5px;
@@ -151,6 +165,9 @@ html {
   padding: 5px 0;
 }
 
+.header-banner-inner {
+  padding: 5px 0;
+}
 /* Default node styles
 /-------------------------------------------------------------- */
 /* Change unpublished and preview colors for dark background themes */
@@ -470,5 +487,9 @@ ul.nice-menu ul li {
 
 ul.nice-menu a {
   padding: 0.3em 12px 0.3em 5px;
-  color: #EC4332;
+  color: #000000;
+}
+
+#pid-home h1.title {
+  display: none;
 }
